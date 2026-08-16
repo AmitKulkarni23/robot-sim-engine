@@ -3,8 +3,8 @@
     "allow": [
       "Bash(gh *)",
       "Bash(vercel *)",
-      "Bash(npm *)",
-      "Bash(npx *)",
+      "Bash(bun *)",
+      "Bash(bunx *)",
       "Bash(pip *)",
       "Bash(python *)",
       "Bash(pytest *)",

@@ -13,6 +13,7 @@ Simulation engine for humanoid robotics. Python backend (Lambda container) runs 
 
 ## Stack
 - **Backend**: Python 3.12 (AWS Lambda container image)
+- **JS Runtime**: Bun (https://bun.sh/)
 - **Frontend**: React 18 + TypeScript + Material UI
 - **Infrastructure**: AWS CDK v2 (TypeScript)
 - **Database**: DynamoDB + S3
@@ -23,17 +24,17 @@ Simulation engine for humanoid robotics. Python backend (Lambda container) runs 
 ## Commands
 ```bash
 # Frontend
-cd frontend && npm install && npm run dev
+cd frontend && bun install && bun run dev
 
 # Infrastructure
-cd infra && npm install
-npx cdk synth        # Synthesize CloudFormation
-npx cdk deploy --all # Deploy all stacks
-npx cdk diff         # Preview changes
+cd infra && bun install
+bunx cdk synth        # Synthesize CloudFormation
+bunx cdk deploy --all # Deploy all stacks
+bunx cdk diff         # Preview changes
 
 # Backend
 cd backend && pip install -r requirements.txt
-python -m pytest     # Run tests
+python -m pytest      # Run tests
 ```
 
 ## Hard Constraints

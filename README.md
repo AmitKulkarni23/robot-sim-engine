@@ -54,6 +54,7 @@ robot-sim-engine/
 ## Stack
 
 - **Backend**: Python 3.12 (Lambda container image)
+- **JS Runtime**: Bun (https://bun.sh/)
 - **Frontend**: React 18 + TypeScript + Material UI
 - **Infrastructure**: AWS CDK (TypeScript)
 - **Database**: DynamoDB (scenarios, results) + S3 (videos, models)
@@ -78,10 +79,10 @@ This project uses a phased design process:
 
 ```bash
 # Frontend
-cd frontend && npm install && npm run dev
+cd frontend && bun install && bun run dev
 
 # Infrastructure
-cd infra && npm install && npx cdk synth && npx cdk deploy --all
+cd infra && bun install && bunx cdk synth && bunx cdk deploy --all
 
 # Backend (local)
 cd backend && pip install -r requirements.txt && python -m pytest
