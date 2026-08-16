@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Build
+dist/
+build/
+cdk.out/
+*.js.map
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# CDK
+cdk.context.json
+
+# Python
+*.egg-info/
+*.egg
+.eggs/
+pip-wheel-metadata/
+
+# Testing
+coverage/
+.coverage
+htmlcov/
+
+# Vercel
+.vercel
+
+# MuJoCo artifacts
+*.mp4
+*.avi
+*.mjcf.bak
+
+# Lambda
+.aws-sam/
