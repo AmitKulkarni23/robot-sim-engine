@@ -13,7 +13,7 @@ from physics.simulation import PhysicsSimulation
 from scenario.loader import apply_randomization
 from scenario.models import Scenario
 
-from .models import RunResult, ScenarioRunError
+from .models import RunResult, ScenarioRunError, StructuredViolation
 
 VIDEO_FPS = 30
 _FOOT_LINK_NAMES = {"left_foot", "right_foot", "foot"}
@@ -45,16 +45,14 @@ def run_scenario(
             )
 
         video_frames = []
-        violations: list[str] = []
+        violations: list[StructuredViolation] = []
+        violation_titles: set[str] = set()
         failures: list[str] = []
         last_capture_time = -1.0 / VIDEO_FPS
 
         while sim.get_time() < max_duration_s:
             state = sim.get_state()
             controller.compute_action(state, sim.get_time())
-            # Applying joint targets to actuators is out of scope for this
-            # task -- StandStillController's targets already equal the
-            # robot's current pose, so no actuation is needed yet.
 
             sim.step()
             sim_time = sim.get_time()
@@ -67,10 +65,18 @@ def run_scenario(
                 if body_name in _FOOT_LINK_NAMES or body_name == _GROUND_BODY_NAME:
                     continue
                 if sim.check_contact(body_name, _GROUND_BODY_NAME):
-                    if "robot fell over" not in violations:
-                        violations.append("robot fell over")
+                    title = "Robot fell over"
+                    if title not in violation_titles:
+                        violation_titles.add(title)
+                        violations.append(StructuredViolation(
+                            severity="error",
+                            title=title,
+                            description=f"Body '{body_name}' contacted ground",
+                            time_label=f"t={sim_time:.2f}s",
+                        ))
 
         duration_s = sim.get_time()
+        steps_simulated = sim.steps_taken
         success = not violations
 
         if duration_s >= max_duration_s:
@@ -80,6 +86,7 @@ def run_scenario(
         return RunResult(
             success=success,
             duration_s=duration_s,
+            steps_simulated=steps_simulated,
             failures=failures,
             violations=violations,
             video_frames=video_frames,

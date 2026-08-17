@@ -44,6 +44,7 @@ def test_run_scenario_given_stand_still_controller_should_complete_and_return_re
 
     assert isinstance(result, RunResult)
     assert result.duration_s == pytest.approx(0.02)
+    assert result.steps_simulated == 10
     assert result.success is False
     assert any("timed out" in failure for failure in result.failures)
 
@@ -97,7 +98,7 @@ def test_run_scenario_given_robot_falls_over_should_record_violation_and_fail():
         max_duration_s=0.02,
     )
 
-    assert "robot fell over" in result.violations
+    assert any(v.title == "Robot fell over" for v in result.violations)
     assert result.success is False
 
 

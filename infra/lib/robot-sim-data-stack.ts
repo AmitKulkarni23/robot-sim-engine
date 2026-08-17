@@ -54,12 +54,12 @@ export class RobotSimDataStack extends cdk.Stack {
     });
 
     // --- SimulationResults table ---
+    // Keys use camelCase to match the Lambda handler's write format.
     this.resultsTable = new dynamodb.Table(this, 'RobotSimResultsTable', {
       tableName: 'robot-sim-simulation-results',
       partitionKey: { name: 'runId', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
-      // Dev/non-prod MUST use DESTROY; prod MUST use RETAIN.
       removalPolicy,
     });
 

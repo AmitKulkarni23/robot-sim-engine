@@ -1,206 +1,24 @@
 import type { Run } from '@/types/run';
 
-// TODO: replace mock data with real Lambda Function URL calls once
-// docs/specs/api-contracts.md defines the runs endpoint contract.
-
-const MOCK_RUNS: Run[] = [
-  {
-    id: 'a3f7c21',
-    scenarioId: 'box-pickup-randomized-weight',
-    scenarioName: 'Box pickup — randomized weight',
-    verdict: 'fail',
-    verdictReason: 'Simulation Failed — grip force insufficient for randomized weight',
-    timestamp: '2026-08-16T11:58:00Z',
-    buildNumber: 184,
-    robotModel: 'unitree-g1',
-    durationSeconds: 14.3,
-    stepsSimulated: 7142,
-    failureAt: 't=8.4s',
-    keyMetricLabel: '-12% grip',
-    keyMetricDeltaDirection: 'neg',
-    metrics: [
-      { name: 'Grip Force', unit: 'N', current: 42.1, previous: 48.3, deltaPct: -12.8, status: 'fail' },
-      { name: 'Object Stability', unit: '', current: 0.34, previous: 0.91, deltaPct: -62.6, status: 'fail' },
-      { name: 'Approach Accuracy', unit: 'mm', current: 3.8, previous: 4.1, deltaPct: 7.3, status: 'changed' },
-      { name: 'Joint Torque Peak', unit: 'Nm', current: 23.4, previous: 23.1, deltaPct: 1.3, status: 'neutral' },
-      { name: 'Energy Consumed', unit: 'J', current: 187.2, previous: 184.9, deltaPct: 1.2, status: 'neutral' },
-      { name: 'Path Smoothness', unit: '', current: 0.94, previous: 0.89, deltaPct: 5.6, status: 'pass' },
-      { name: 'Cycle Time', unit: 's', current: 8.4, previous: 9.1, deltaPct: -7.7, status: 'pass' },
-    ],
-    violations: [
-      {
-        id: 'a3f7c21-v1',
-        severity: 'error',
-        title: 'Object dropped during transport',
-        description:
-          'Box left gripper contact at height 0.82m — grip force 42.1N below threshold 55N for 11.2kg payload',
-        timeLabel: 't=8.41s',
-      },
-      {
-        id: 'a3f7c21-v2',
-        severity: 'warning',
-        title: 'Joint torque approaching limit',
-        description: 'Right wrist joint reached 94% of rated torque during lift phase',
-        timeLabel: 't=6.22s',
-      },
-    ],
-  },
-  {
-    id: 'e9b4d08',
-    scenarioId: 'box-pickup-standard-5kg',
-    scenarioName: 'Box pickup — standard 5kg',
-    verdict: 'pass',
-    verdictReason: 'Simulation Passed — all thresholds met',
-    timestamp: '2026-08-16T11:42:00Z',
-    buildNumber: 184,
-    robotModel: 'unitree-g1',
-    durationSeconds: 9.1,
-    stepsSimulated: 4550,
-    keyMetricLabel: '+3% speed',
-    keyMetricDeltaDirection: 'pos',
-    metrics: [
-      { name: 'Grip Force', unit: 'N', current: 58.4, previous: 57.1, deltaPct: 2.3, status: 'pass' },
-      { name: 'Object Stability', unit: '', current: 0.97, previous: 0.95, deltaPct: 2.1, status: 'pass' },
-      { name: 'Approach Accuracy', unit: 'mm', current: 2.9, previous: 3.1, deltaPct: 6.5, status: 'pass' },
-      { name: 'Joint Torque Peak', unit: 'Nm', current: 19.8, previous: 20.1, deltaPct: -1.5, status: 'neutral' },
-      { name: 'Energy Consumed', unit: 'J', current: 142.6, previous: 146.9, deltaPct: -2.9, status: 'pass' },
-      { name: 'Path Smoothness', unit: '', current: 0.96, previous: 0.94, deltaPct: 2.1, status: 'neutral' },
-      { name: 'Cycle Time', unit: 's', current: 6.7, previous: 6.9, deltaPct: -2.9, status: 'pass' },
-    ],
-    violations: [],
-  },
-  {
-    id: '7c1fa93',
-    scenarioId: 'walk-to-station-b',
-    scenarioName: 'Walk to station B',
-    verdict: 'pass',
-    verdictReason: 'Simulation Passed — all thresholds met',
-    timestamp: '2026-08-16T11:26:00Z',
-    buildNumber: 183,
-    robotModel: 'unitree-g1',
-    durationSeconds: 22.4,
-    stepsSimulated: 11200,
-    keyMetricLabel: '±0%',
-    keyMetricDeltaDirection: 'neutral',
-    metrics: [
-      { name: 'Path Smoothness', unit: '', current: 0.9, previous: 0.9, deltaPct: 0, status: 'neutral' },
-      { name: 'Energy Consumed', unit: 'J', current: 312.4, previous: 311.8, deltaPct: 0.2, status: 'neutral' },
-      { name: 'Cycle Time', unit: 's', current: 22.4, previous: 22.3, deltaPct: 0.4, status: 'neutral' },
-      { name: 'Joint Torque Peak', unit: 'Nm', current: 17.2, previous: 17.4, deltaPct: -1.1, status: 'neutral' },
-    ],
-    violations: [],
-  },
-  {
-    id: '2d8e5b1',
-    scenarioId: 'pallet-stack-3-box',
-    scenarioName: 'Pallet stack — 3 box sequence',
-    verdict: 'fail',
-    verdictReason: 'Simulation Failed — collision detected between box and pallet rail',
-    timestamp: '2026-08-16T11:00:00Z',
-    buildNumber: 183,
-    robotModel: 'unitree-g1',
-    durationSeconds: 18.9,
-    stepsSimulated: 9450,
-    failureAt: 't=15.2s',
-    keyMetricLabel: 'collision',
-    keyMetricDeltaDirection: 'neg',
-    metrics: [
-      { name: 'Grip Force', unit: 'N', current: 51.2, previous: 52.0, deltaPct: -1.5, status: 'neutral' },
-      { name: 'Object Stability', unit: '', current: 0.61, previous: 0.88, deltaPct: -30.7, status: 'fail' },
-      { name: 'Approach Accuracy', unit: 'mm', current: 6.4, previous: 4.2, deltaPct: -52.4, status: 'fail' },
-      { name: 'Path Smoothness', unit: '', current: 0.71, previous: 0.86, deltaPct: -17.4, status: 'fail' },
-    ],
-    violations: [
-      {
-        id: '2d8e5b1-v1',
-        severity: 'error',
-        title: 'Collision with pallet rail',
-        description: 'Right forearm contacted pallet rail while placing third box in stack',
-        timeLabel: 't=15.18s',
-      },
-    ],
-  },
-  {
-    id: 'f4a2c67',
-    scenarioId: 'walk-to-station-b',
-    scenarioName: 'Walk to station B',
-    verdict: 'pass',
-    verdictReason: 'Simulation Passed — all thresholds met',
-    timestamp: '2026-08-16T10:00:00Z',
-    buildNumber: 182,
-    robotModel: 'unitree-g1',
-    durationSeconds: 21.8,
-    stepsSimulated: 10900,
-    keyMetricLabel: '+8% balance',
-    keyMetricDeltaDirection: 'pos',
-    metrics: [
-      { name: 'Path Smoothness', unit: '', current: 0.92, previous: 0.85, deltaPct: 8.2, status: 'pass' },
-      { name: 'Energy Consumed', unit: 'J', current: 305.1, previous: 318.4, deltaPct: -4.2, status: 'pass' },
-      { name: 'Cycle Time', unit: 's', current: 21.8, previous: 22.9, deltaPct: -4.8, status: 'pass' },
-    ],
-    violations: [],
-  },
-  {
-    id: 'b19d3e4',
-    scenarioId: 'obstacle-avoidance-cones',
-    scenarioName: 'Obstacle avoidance — cones',
-    verdict: 'running',
-    timestamp: '2026-08-16T12:00:00Z',
-    buildNumber: 185,
-    robotModel: 'unitree-g1',
-    durationSeconds: 0,
-    stepsSimulated: 0,
-    keyMetricLabel: 'pending',
-    keyMetricDeltaDirection: 'neutral',
-    metrics: [],
-    violations: [],
-  },
-  {
-    id: '88c4e19',
-    scenarioId: 'box-pickup-standard-5kg',
-    scenarioName: 'Box pickup — standard 5kg',
-    verdict: 'pass',
-    verdictReason: 'Simulation Passed — all thresholds met',
-    timestamp: '2026-08-16T09:00:00Z',
-    buildNumber: 181,
-    robotModel: 'unitree-g1',
-    durationSeconds: 9.4,
-    stepsSimulated: 4700,
-    keyMetricLabel: '+1% grip',
-    keyMetricDeltaDirection: 'pos',
-    metrics: [
-      { name: 'Grip Force', unit: 'N', current: 57.1, previous: 56.5, deltaPct: 1.1, status: 'pass' },
-      { name: 'Object Stability', unit: '', current: 0.95, previous: 0.94, deltaPct: 1.1, status: 'neutral' },
-    ],
-    violations: [],
-  },
-  {
-    id: '5f9a712',
-    scenarioId: 'pallet-stack-3-box',
-    scenarioName: 'Pallet stack — 3 box sequence',
-    verdict: 'pass',
-    verdictReason: 'Simulation Passed — all thresholds met',
-    timestamp: '2026-08-16T07:30:00Z',
-    buildNumber: 180,
-    robotModel: 'unitree-g1',
-    durationSeconds: 17.6,
-    stepsSimulated: 8800,
-    keyMetricLabel: '+4% stability',
-    keyMetricDeltaDirection: 'pos',
-    metrics: [
-      { name: 'Object Stability', unit: '', current: 0.9, previous: 0.86, deltaPct: 4.7, status: 'pass' },
-      { name: 'Approach Accuracy', unit: 'mm', current: 3.9, previous: 4.0, deltaPct: 2.5, status: 'neutral' },
-    ],
-    violations: [],
-  },
-];
+const API_URL = import.meta.env.VITE_API_URL as string;
 
 /** Fetches the full list of simulation runs, ordered newest first. */
-export const getRuns = async (): Promise<Run[]> =>
-  [...MOCK_RUNS].sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-  );
+export const getRuns = async (): Promise<Run[]> => {
+  const response = await fetch(`${API_URL}/runs`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch runs: ${response.status}`);
+  }
+  return response.json();
+};
 
-/** Fetches a single run by its commit-style hash id. */
-export const getRunById = async (runId: string): Promise<Run | undefined> =>
-  MOCK_RUNS.find((run) => run.id === runId);
+/** Fetches a single run by its ID. */
+export const getRunById = async (runId: string): Promise<Run | undefined> => {
+  const response = await fetch(`${API_URL}/runs/${encodeURIComponent(runId)}`);
+  if (response.status === 404) {
+    return undefined;
+  }
+  if (!response.ok) {
+    throw new Error(`Failed to fetch run: ${response.status}`);
+  }
+  return response.json();
+};

@@ -31,6 +31,10 @@ class PhysicsSimulation:
         self._steps_taken = 0
         self._renderer: mujoco.Renderer | None = None
 
+    @property
+    def steps_taken(self) -> int:
+        return self._steps_taken
+
     def step(self) -> None:
         """Advance the simulation by exactly one `timestep`."""
         mujoco.mj_step(self._model, self._data)

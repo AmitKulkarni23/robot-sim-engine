@@ -16,27 +16,19 @@ export interface RobotSimComputeStackProps extends cdk.StackProps {
   sitePacksBucket: s3.Bucket;
 }
 
-/**
- * RobotSimComputeStack — the single Lambda container that runs the entire
- * simulation engine (MuJoCo physics + OSMesa render + ffmpeg encode).
- *
- * Function URL is currently disabled (re-enable when ready to accept
- * external triggers). When enabled, use authType: NONE with a
- * shared-secret header (X-Webhook-Secret) validated in the handler.
- */
 export class RobotSimComputeStack extends cdk.Stack {
   public readonly simulatorFunction: lambda.DockerImageFunction;
+  public readonly functionUrl: lambda.FunctionUrl;
 
   constructor(scope: Construct, id: string, props: RobotSimComputeStackProps) {
     super(scope, id, props);
+
+    const webhookSecret = cdk.SecretValue.ssmSecure('/robot-sim/webhook-secret');
 
     // ======================
     // 2. COMPUTE LAYER
     // ======================
 
-    // Container image build context is backend/ — task 010 populates this
-    // directory with a Dockerfile. Until then, `cdk synth` fails on image
-    // build; that is expected and acceptable at this stage.
     this.simulatorFunction = new lambda.DockerImageFunction(this, 'RobotSimSimulatorFunction', {
       functionName: 'RobotSimSimulator',
       code: lambda.DockerImageCode.fromImageAsset(path.join(__dirname, '../../backend')),
@@ -48,6 +40,7 @@ export class RobotSimComputeStack extends cdk.Stack {
         VIDEO_BUCKET_NAME_ENV: props.videoReplaysBucket.bucketName,
         MODELS_BUCKET_NAME_ENV: props.robotModelsBucket.bucketName,
         SITE_PACKS_BUCKET_NAME_ENV: props.sitePacksBucket.bucketName,
+        WEBHOOK_SECRET_ENV: webhookSecret.unsafeUnwrap(),
       },
       logRetention: logs.RetentionDays.ONE_MONTH,
     });
@@ -59,8 +52,23 @@ export class RobotSimComputeStack extends cdk.Stack {
     props.robotModelsBucket.grantRead(this.simulatorFunction);
     props.sitePacksBucket.grantRead(this.simulatorFunction);
 
+    this.functionUrl = this.simulatorFunction.addFunctionUrl({
+      authType: lambda.FunctionUrlAuthType.NONE,
+      cors: {
+        allowedOrigins: ['*'],
+        allowedMethods: [lambda.HttpMethod.GET, lambda.HttpMethod.POST],
+        allowedHeaders: ['Content-Type', 'x-webhook-secret'],
+        maxAge: cdk.Duration.seconds(300),
+      },
+    });
+
     // ======================
     // 3. OUTPUTS
     // ======================
+
+    new cdk.CfnOutput(this, 'RobotSimFunctionUrlOutput', {
+      value: this.functionUrl.url,
+      exportName: 'RobotSimFunctionUrl',
+    });
   }
 }

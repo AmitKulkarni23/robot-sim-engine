@@ -14,9 +14,26 @@ class ScenarioRunError(Exception):
 
 
 @dataclass
+class StructuredViolation:
+    severity: str
+    title: str
+    description: str
+    time_label: str
+
+
+@dataclass
+class MetricValue:
+    name: str
+    unit: str
+    value: float
+
+
+@dataclass
 class RunResult:
     success: bool
     duration_s: float
+    steps_simulated: int = 0
     failures: list[str] = field(default_factory=list)
-    violations: list[str] = field(default_factory=list)
+    violations: list[StructuredViolation] = field(default_factory=list)
+    metrics: list[MetricValue] = field(default_factory=list)
     video_frames: list[np.ndarray] = field(default_factory=list)
