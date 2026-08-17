@@ -1,0 +1,10 @@
+scenario_id: walk-to-station-b
+version: 1
+robot_model: unitree_g1
+task:
+  task_type: navigation
+  description: "Bipedal walk from staging area to station B, 6m over a flat factory floor."
+object_placements: []
+randomization:
+  seed: null
+  position_noise_std: 0.0

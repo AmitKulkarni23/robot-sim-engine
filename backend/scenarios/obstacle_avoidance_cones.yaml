@@ -1,0 +1,19 @@
+scenario_id: obstacle-avoidance-cones
+version: 1
+robot_model: unitree_g1
+task:
+  task_type: navigation
+  description: "Navigate a corridor of randomly placed cones without contact."
+object_placements:
+  - object_id: cone_1
+    position: [2.0, 0.5, 0.15]
+    orientation: [1.0, 0.0, 0.0, 0.0]
+  - object_id: cone_2
+    position: [3.0, -0.3, 0.15]
+    orientation: [1.0, 0.0, 0.0, 0.0]
+  - object_id: cone_3
+    position: [4.0, 0.4, 0.15]
+    orientation: [1.0, 0.0, 0.0, 0.0]
+randomization:
+  seed: 99
+  position_noise_std: 0.15

@@ -1,0 +1,13 @@
+scenario_id: box-pickup-standard-5kg
+version: 1
+robot_model: unitree_g1
+task:
+  task_type: pick_and_place
+  description: "Grasp and lift a fixed 5kg box from a table to a shelf at 1.1m height."
+object_placements:
+  - object_id: box_5kg
+    position: [0.6, 0.0, 0.52]
+    orientation: [1.0, 0.0, 0.0, 0.0]
+randomization:
+  seed: null
+  position_noise_std: 0.0

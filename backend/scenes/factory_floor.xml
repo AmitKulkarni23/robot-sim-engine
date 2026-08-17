@@ -1,0 +1,67 @@
+<mujoco model="factory_floor">
+  <option timestep="0.002" gravity="0 0 -9.81"/>
+
+  <asset>
+    <texture name="grid" type="2d" builtin="checker" rgb1="0.8 0.8 0.8" rgb2="0.6 0.6 0.6" width="512" height="512"/>
+    <material name="floor_mat" texture="grid" texrepeat="8 8" reflectance="0.1"/>
+    <material name="table_mat" rgba="0.5 0.35 0.2 1"/>
+    <material name="shelf_mat" rgba="0.4 0.4 0.45 1"/>
+    <material name="box_mat" rgba="0.65 0.45 0.2 1"/>
+    <material name="pallet_mat" rgba="0.6 0.5 0.3 1"/>
+    <material name="cone_mat" rgba="1.0 0.5 0.0 1"/>
+  </asset>
+
+  <worldbody>
+    <!-- Factory floor -->
+    <body name="floor_body" pos="0 0 0">
+      <geom name="floor" type="plane" size="10 10 0.1" material="floor_mat"/>
+    </body>
+
+    <!-- Pickup table -->
+    <body name="pickup_table" pos="0.6 0 0.4">
+      <geom name="table_top" type="box" size="0.4 0.3 0.02" material="table_mat"/>
+      <geom name="table_leg1" type="cylinder" size="0.03 0.2" pos="-0.35 -0.25 -0.2" material="table_mat"/>
+      <geom name="table_leg2" type="cylinder" size="0.03 0.2" pos="0.35 -0.25 -0.2" material="table_mat"/>
+      <geom name="table_leg3" type="cylinder" size="0.03 0.2" pos="-0.35 0.25 -0.2" material="table_mat"/>
+      <geom name="table_leg4" type="cylinder" size="0.03 0.2" pos="0.35 0.25 -0.2" material="table_mat"/>
+    </body>
+
+    <!-- Target shelf -->
+    <body name="target_shelf" pos="0.6 0 1.1">
+      <geom name="shelf_surface" type="box" size="0.4 0.3 0.015" material="shelf_mat"/>
+      <geom name="shelf_back" type="box" size="0.4 0.015 0.15" pos="0 -0.285 0.15" material="shelf_mat"/>
+    </body>
+
+    <!-- Box (free body — can be repositioned by scenario) -->
+    <body name="box_5kg" pos="0.6 0 0.52">
+      <joint name="box_5kg_free" type="free"/>
+      <geom name="box_geom" type="box" size="0.1 0.1 0.1" mass="5.0" material="box_mat"/>
+    </body>
+
+    <!-- Pallet -->
+    <body name="pallet" pos="-0.8 0 0.05">
+      <geom name="pallet_base" type="box" size="0.5 0.4 0.05" material="pallet_mat"/>
+      <geom name="pallet_rail_left" type="box" size="0.02 0.4 0.08" pos="-0.48 0 0.08" material="pallet_mat"/>
+      <geom name="pallet_rail_right" type="box" size="0.02 0.4 0.08" pos="0.48 0 0.08" material="pallet_mat"/>
+    </body>
+
+    <!-- Station B marker (walk target) -->
+    <body name="station_b" pos="6 0 0.01">
+      <geom name="station_b_marker" type="cylinder" size="0.3 0.01" rgba="0.2 0.6 0.2 0.5"/>
+    </body>
+
+    <!-- Obstacle cones -->
+    <body name="cone_1" pos="2 0.5 0.15">
+      <geom name="cone_1_geom" type="cylinder" size="0.08 0.15" material="cone_mat"/>
+    </body>
+    <body name="cone_2" pos="3 -0.3 0.15">
+      <geom name="cone_2_geom" type="cylinder" size="0.08 0.15" material="cone_mat"/>
+    </body>
+    <body name="cone_3" pos="4 0.4 0.15">
+      <geom name="cone_3_geom" type="cylinder" size="0.08 0.15" material="cone_mat"/>
+    </body>
+
+    <!-- Light -->
+    <light name="overhead" pos="0 0 5" dir="0 0 -1" diffuse="0.9 0.9 0.9" specular="0.3 0.3 0.3"/>
+  </worldbody>
+</mujoco>

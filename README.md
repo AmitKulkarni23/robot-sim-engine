@@ -109,6 +109,16 @@ bunx cdk deploy --all    # Deploy all stacks to AWS
 bunx cdk destroy --all   # Tear down all stacks
 ```
 
+### Seed Data
+
+```bash
+cd backend
+source .venv/bin/activate
+python scripts/seed_scenarios.py    # Load scenarios into DynamoDB
+```
+
+Requires AWS credentials and the `SCENARIOS_TABLE_NAME_ENV` env var (defaults to `robot-sim-scenarios`).
+
 ### Vercel (Frontend Deployment)
 
 ```bash
