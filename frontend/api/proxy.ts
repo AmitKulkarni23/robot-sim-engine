@@ -14,24 +14,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const headers: Record<string, string> = {
     'x-webhook-secret': apiSecret,
+    'Content-Type': 'application/json',
   };
-  if (req.headers['content-type']) {
-    headers['Content-Type'] = req.headers['content-type'];
+
+  let body: string | undefined;
+  if (req.method !== 'GET' && req.method !== 'HEAD' && req.body != null) {
+    body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
   }
 
   try {
     const response = await fetch(targetUrl, {
       method: req.method,
       headers,
-      body: req.method !== 'GET' && req.method !== 'HEAD' ? JSON.stringify(req.body) : undefined,
+      body,
     });
 
-    const body = await response.text();
+    const responseBody = await response.text();
     const contentType = response.headers.get('content-type');
     if (contentType) {
       res.setHeader('Content-Type', contentType);
     }
-    return res.status(response.status).send(body);
+    return res.status(response.status).send(responseBody);
   } catch (err) {
     return res.status(502).json({ error: 'Failed to reach backend', detail: String(err) });
   }

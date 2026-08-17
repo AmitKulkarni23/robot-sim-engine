@@ -10,9 +10,9 @@ import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import { fontFamilyMono } from '@/config/theme';
 
 const NAV_ITEMS = [
-  { to: '/runs', label: 'Runs', icon: ListAltIcon, count: 8 },
-  { to: '/scenarios', label: 'Scenarios', icon: CategoryIcon, count: 7 },
-  { to: '/compare', label: 'Compare', icon: CompareArrowsIcon, count: null },
+  { to: '/runs', label: 'Runs', icon: ListAltIcon },
+  { to: '/scenarios', label: 'Scenarios', icon: CategoryIcon },
+  { to: '/compare', label: 'Compare', icon: CompareArrowsIcon },
 ];
 
 const Sidebar: React.FC = () => {
@@ -81,22 +81,6 @@ const Sidebar: React.FC = () => {
           >
             <item.icon sx={{ fontSize: 16 }} />
             {item.label}
-            {item.count !== null && (
-              <Typography
-                component="span"
-                sx={{
-                  ml: 'auto',
-                  fontFamily: fontFamilyMono,
-                  fontSize: 11,
-                  color: theme.palette.text.disabled,
-                  backgroundColor: theme.palette.action.selected,
-                  px: 0.75,
-                  borderRadius: 10,
-                }}
-              >
-                {item.count}
-              </Typography>
-            )}
           </Box>
         ))}
       </Box>
