@@ -144,6 +144,7 @@ npx cdk destroy --all # Destroy
 
 ## Rules
 
+- Do NOT write CDK tests (no assertions, no vitest, no jest). CDK stacks are validated by `cdk synth` and manual deploy — unit tests on IaC add ceremony without value.
 - CloudFront certificates MUST be in `us-east-1`
 - S3 buckets MUST use `blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL`
 - Dev resources SHOULD use `removalPolicy: cdk.RemovalPolicy.DESTROY`

@@ -8,7 +8,6 @@
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
-    "test": "vitest run",
     "synth": "cdk synth",
     "deploy": "cdk deploy --all",
     "diff": "cdk diff",
@@ -18,8 +17,7 @@
     "@types/node": "^20.11.0",
     "aws-cdk": "^2.150.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.4.5",
-    "vitest": "^1.6.0"
+    "typescript": "^5.4.5"
   },
   "dependencies": {
     "aws-cdk-lib": "^2.150.0",
