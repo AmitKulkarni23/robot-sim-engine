@@ -1,7 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
+import AddIcon from '@mui/icons-material/Add';
+import { useNavigate } from 'react-router-dom';
 import TopBar from '@/components/layout/TopBar';
 import ScenarioRow from '@/components/scenarios/ScenarioRow';
 import FilterTabs from '@/components/common/FilterTabs';
@@ -20,6 +23,7 @@ const FILTER_OPTIONS: { value: ScenarioFilter; label: string }[] = [
 const ScenarioBrowserPage: React.FC = () => {
   const { data: scenarios, loading, error } = useScenarios();
   const [filter, setFilter] = useState<ScenarioFilter>('all');
+  const navigate = useNavigate();
 
   const filteredScenarios = useMemo(
     () => (filter === 'all' ? scenarios : scenarios.filter((scenario) => scenario.status === filter)),
@@ -41,6 +45,15 @@ const ScenarioBrowserPage: React.FC = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
               <Typography sx={{ fontSize: 16, fontWeight: 600 }}>Scenarios</Typography>
               <FilterTabs options={FILTER_OPTIONS} value={filter} onChange={setFilter} />
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<AddIcon />}
+                onClick={() => navigate('/scenarios/new')}
+                sx={{ ml: 'auto', fontSize: 12 }}
+              >
+                New Scenario
+              </Button>
             </Box>
             <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1.5, backgroundColor: 'background.paper' }}>
               {filteredScenarios.map((scenario) => (

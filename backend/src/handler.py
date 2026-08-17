@@ -18,25 +18,33 @@ from harness.models import ScenarioRunError
 from harness.runner import run_scenario
 from robot_model.loader import get_robot_model
 from scenario.loader import load_scenario
+from scenario.models import ScenarioValidationError
 from video.recorder import VideoRecorder, upload_replay
 
 logger = logging.getLogger(__name__)
 
-WEBHOOK_SECRET_ENV = "WEBHOOK_SECRET_ENV"
+WEBHOOK_SECRET_PARAM_NAME_ENV = "WEBHOOK_SECRET_PARAM_NAME_ENV"
 SCENARIOS_TABLE_NAME_ENV = "SCENARIOS_TABLE_NAME_ENV"
 RESULTS_TABLE_NAME_ENV = "RESULTS_TABLE_NAME_ENV"
 
-_CORS_HEADERS = {
-    "Access-Control-Allow-Origin": os.environ.get("ALLOWED_ORIGIN_ENV", "*"),
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, x-webhook-secret",
-}
+_cached_webhook_secret: str | None = None
 
+
+def _get_webhook_secret() -> str | None:
+    global _cached_webhook_secret
+    if _cached_webhook_secret is not None:
+        return _cached_webhook_secret
+    param_name = os.environ.get(WEBHOOK_SECRET_PARAM_NAME_ENV)
+    if not param_name:
+        return None
+    ssm = boto3.client("ssm")
+    resp = ssm.get_parameter(Name=param_name, WithDecryption=True)
+    _cached_webhook_secret = resp["Parameter"]["Value"]
+    return _cached_webhook_secret
 
 def _response(status_code: int, body: Any) -> dict:
     return {
         "statusCode": status_code,
-        "headers": _CORS_HEADERS,
         "body": body if isinstance(body, str) else json.dumps(body),
     }
 
@@ -161,13 +169,79 @@ def _handle_get_scenarios(dynamodb_client) -> dict:
     return _response(200, scenarios)
 
 
-def _handle_simulate(event: dict, dynamodb_client) -> dict:
-    headers = event.get("headers") or {}
-    provided_secret = headers.get("x-webhook-secret")
-    expected_secret = os.environ.get(WEBHOOK_SECRET_ENV)
-    if not provided_secret or provided_secret != expected_secret:
-        return _response(401, "Unauthorized")
+def _handle_get_scenario(dynamodb_client, scenario_id: str) -> dict:
+    scenarios_table = os.environ[SCENARIOS_TABLE_NAME_ENV]
+    resp = dynamodb_client.query(
+        TableName=scenarios_table,
+        KeyConditionExpression="scenarioId = :sid",
+        ExpressionAttributeValues={":sid": {"S": scenario_id}},
+        ScanIndexForward=False,
+        Limit=1,
+    )
+    items = resp.get("Items", [])
+    if not items:
+        return _response(404, {"error": "Scenario not found"})
 
+    item = items[0]
+    scenario = {
+        "id": item.get("scenarioId", {}).get("S", ""),
+        "version": int(item.get("version", {}).get("N", "1")),
+        "name": item.get("name", {}).get("S", ""),
+        "status": item.get("status", {}).get("S", "draft"),
+        "description": item.get("description", {}).get("S", ""),
+        "robotModel": item.get("robotModel", {}).get("S", ""),
+        "updatedAt": item.get("updatedAt", {}).get("S", ""),
+        "yamlContent": item.get("yaml_content", {}).get("S", ""),
+        "runCount": int(item.get("runCount", {}).get("N", "0")),
+        "passRate": float(item.get("passRate", {}).get("N", "0")),
+    }
+    return _response(200, scenario)
+
+
+def _handle_create_scenario(event: dict, dynamodb_client) -> dict:
+    try:
+        payload = json.loads(event.get("body") or "{}")
+    except json.JSONDecodeError:
+        return _response(400, {"error": "Invalid JSON payload"})
+
+    yaml_content = payload.get("yaml_content", "").strip()
+    if not yaml_content:
+        return _response(400, {"error": "yaml_content is required"})
+
+    try:
+        scenario = load_scenario(yaml_content)
+    except ScenarioValidationError as exc:
+        return _response(422, {"error": "Validation failed", "details": str(exc)})
+
+    scenarios_table = os.environ[SCENARIOS_TABLE_NAME_ENV]
+    now = datetime.now(timezone.utc).isoformat()
+    name = scenario.scenario_id.replace("-", " ").replace("_", " ").title()
+
+    dynamodb_client.put_item(
+        TableName=scenarios_table,
+        Item={
+            "scenarioId": {"S": scenario.scenario_id},
+            "version": {"N": str(scenario.version)},
+            "yaml_content": {"S": yaml_content},
+            "name": {"S": name},
+            "status": {"S": "draft"},
+            "description": {"S": scenario.task.description},
+            "robotModel": {"S": scenario.robot_model},
+            "updatedAt": {"S": now},
+            "runCount": {"N": "0"},
+            "passRate": {"N": "0"},
+        },
+    )
+
+    return _response(201, {
+        "id": scenario.scenario_id,
+        "version": scenario.version,
+        "name": name,
+        "status": "draft",
+    })
+
+
+def _handle_simulate(event: dict, dynamodb_client) -> dict:
     try:
         payload = json.loads(event.get("body") or "{}")
     except json.JSONDecodeError:
@@ -245,11 +319,24 @@ def _handle_simulate(event: dict, dynamodb_client) -> dict:
     return _response(200, {"run_id": run_id, "success": success})
 
 
+def _check_auth(event: dict) -> dict | None:
+    headers = event.get("headers") or {}
+    provided_secret = headers.get("x-webhook-secret")
+    expected_secret = _get_webhook_secret()
+    if not provided_secret or provided_secret != expected_secret:
+        return _response(401, {"error": "Unauthorized"})
+    return None
+
+
 def handler(event: dict, context) -> dict:
     method, path = _get_method_and_path(event)
 
     if method == "OPTIONS":
         return _response(204, "")
+
+    auth_error = _check_auth(event)
+    if auth_error:
+        return auth_error
 
     try:
         dynamodb_client = boto3.client("dynamodb")
@@ -262,9 +349,14 @@ def handler(event: dict, context) -> dict:
                 return _handle_get_run(dynamodb_client, run_id)
             if path == "/scenarios":
                 return _handle_get_scenarios(dynamodb_client)
+            if path.startswith("/scenarios/"):
+                scenario_id = path.split("/scenarios/", 1)[1]
+                return _handle_get_scenario(dynamodb_client, scenario_id)
             return _response(404, {"error": "Not found"})
 
         if method == "POST":
+            if path == "/scenarios":
+                return _handle_create_scenario(event, dynamodb_client)
             return _handle_simulate(event, dynamodb_client)
 
         return _response(405, {"error": "Method not allowed"})

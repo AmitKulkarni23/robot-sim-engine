@@ -10,3 +10,15 @@ export interface Scenario {
   runCount: number;
   passRate: number;
 }
+
+export interface ScenarioDetail extends Scenario {
+  version: number;
+  yamlContent: string;
+}
+
+export interface CreateScenarioResponse {
+  id: string;
+  version: number;
+  name: string;
+  status: ScenarioStatus;
+}

@@ -16,11 +16,14 @@ SECRET = "test-secret"
 
 @pytest.fixture(autouse=True)
 def _env(monkeypatch):
-    monkeypatch.setenv("WEBHOOK_SECRET_ENV", SECRET)
+    monkeypatch.setenv("WEBHOOK_SECRET_PARAM_NAME_ENV", "/robot-sim/webhook-secret")
     monkeypatch.setenv("SCENARIOS_TABLE_NAME_ENV", SCENARIOS_TABLE)
     monkeypatch.setenv("RESULTS_TABLE_NAME_ENV", RESULTS_TABLE)
     monkeypatch.setenv("VIDEO_BUCKET_NAME_ENV", "video-bucket")
     monkeypatch.setenv("MODELS_BUCKET_NAME_ENV", "models-bucket")
+    handler_module._cached_webhook_secret = SECRET
+    yield
+    handler_module._cached_webhook_secret = None
 
 
 def _post_event(body=None, secret=SECRET):
@@ -34,9 +37,12 @@ def _post_event(body=None, secret=SECRET):
     }
 
 
-def _get_event(path="/runs"):
+def _get_event(path="/runs", secret=SECRET):
+    headers = {}
+    if secret is not None:
+        headers["x-webhook-secret"] = secret
     return {
-        "headers": {},
+        "headers": headers,
         "requestContext": {"http": {"method": "GET", "path": path}},
     }
 
@@ -75,6 +81,18 @@ def test_handler_given_wrong_webhook_secret_should_return_401():
         _post_event({"scenario_id": "s1", "version": 1}, secret="wrong"), None
     )
 
+    assert response["statusCode"] == 401
+
+
+def test_handler_get_without_secret_should_return_401():
+    response = handler_module.handler(_get_event("/runs", secret=None), None)
+    assert response["statusCode"] == 401
+
+
+def test_handler_post_scenario_without_secret_should_return_401():
+    response = handler_module.handler(
+        _post_scenario_event({"yaml_content": "x"}, secret=None), None
+    )
     assert response["statusCode"] == 401
 
 
@@ -301,7 +319,118 @@ def test_handler_get_scenarios_should_return_scenarios_from_dynamodb():
     assert scenarios[0]["passRate"] == 0.9
 
 
-def test_handler_options_should_return_204_with_cors_headers():
+VALID_SCENARIO_YAML = """\
+scenario_id: test-new-scenario
+version: 1
+robot_model: unitree_g1
+task:
+  task_type: navigation
+  description: "Walk forward 3 metres."
+object_placements: []
+randomization:
+  seed: null
+  position_noise_std: 0.0
+"""
+
+
+def _post_scenario_event(body=None, secret=SECRET):
+    headers = {}
+    if secret is not None:
+        headers["x-webhook-secret"] = secret
+    return {
+        "headers": headers,
+        "body": json.dumps(body) if body is not None else None,
+        "requestContext": {"http": {"method": "POST", "path": "/scenarios"}},
+    }
+
+
+@mock_aws
+def test_create_scenario_given_valid_yaml_should_return_201_and_write_to_dynamodb():
+    client = boto3.client("dynamodb", region_name="us-east-1")
+    _create_tables(client)
+
+    response = handler_module.handler(
+        _post_scenario_event({"yaml_content": VALID_SCENARIO_YAML}), None
+    )
+
+    assert response["statusCode"] == 201
+    body = json.loads(response["body"])
+    assert body["id"] == "test-new-scenario"
+    assert body["version"] == 1
+    assert body["status"] == "draft"
+
+    item = client.get_item(
+        TableName=SCENARIOS_TABLE,
+        Key={"scenarioId": {"S": "test-new-scenario"}, "version": {"N": "1"}},
+    )["Item"]
+    assert item["yaml_content"]["S"] == VALID_SCENARIO_YAML.strip()
+    assert item["robotModel"]["S"] == "unitree_g1"
+    assert item["description"]["S"] == "Walk forward 3 metres."
+
+
+def test_create_scenario_given_empty_yaml_should_return_400():
+    response = handler_module.handler(
+        _post_scenario_event({"yaml_content": ""}), None
+    )
+    assert response["statusCode"] == 400
+
+
+def test_create_scenario_given_invalid_yaml_should_return_422():
+    response = handler_module.handler(
+        _post_scenario_event({"yaml_content": "not: valid: yaml: ["}), None
+    )
+    assert response["statusCode"] == 422
+
+
+def test_create_scenario_given_yaml_missing_required_fields_should_return_422():
+    response = handler_module.handler(
+        _post_scenario_event({"yaml_content": "scenario_id: x\nversion: 1\n"}), None
+    )
+    assert response["statusCode"] == 422
+    body = json.loads(response["body"])
+    assert "Validation failed" in body["error"]
+
+
+@mock_aws
+def test_get_scenario_by_id_should_return_scenario_with_yaml_content():
+    client = boto3.client("dynamodb", region_name="us-east-1")
+    _create_tables(client)
+    client.put_item(
+        TableName=SCENARIOS_TABLE,
+        Item={
+            "scenarioId": {"S": "walk-test"},
+            "version": {"N": "1"},
+            "name": {"S": "Walk Test"},
+            "status": {"S": "published"},
+            "description": {"S": "Walk forward"},
+            "robotModel": {"S": "unitree-g1"},
+            "updatedAt": {"S": "2026-08-17T00:00:00Z"},
+            "yaml_content": {"S": VALID_SCENARIO_YAML},
+            "runCount": {"N": "5"},
+            "passRate": {"N": "0.8"},
+        },
+    )
+
+    response = handler_module.handler(_get_event("/scenarios/walk-test"), None)
+
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert body["id"] == "walk-test"
+    assert body["yamlContent"] == VALID_SCENARIO_YAML
+    assert body["version"] == 1
+
+
+@mock_aws
+def test_get_scenario_by_id_given_missing_should_return_404():
+    client = boto3.client("dynamodb", region_name="us-east-1")
+    _create_tables(client)
+
+    response = handler_module.handler(_get_event("/scenarios/nonexistent"), None)
+
+    assert response["statusCode"] == 404
+
+
+def test_handler_options_should_return_204():
     event = {
         "headers": {},
         "requestContext": {"http": {"method": "OPTIONS", "path": "/runs"}},
@@ -309,4 +438,3 @@ def test_handler_options_should_return_204_with_cors_headers():
     response = handler_module.handler(event, None)
 
     assert response["statusCode"] == 204
-    assert "Access-Control-Allow-Origin" in response["headers"]

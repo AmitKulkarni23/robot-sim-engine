@@ -10,6 +10,9 @@ dist/
 build/
 cdk.out/
 *.js.map
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
 
 # Environment
 .env

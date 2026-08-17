@@ -2,6 +2,7 @@ import React from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { useTheme } from '@mui/material/styles';
+import { useNavigate } from 'react-router-dom';
 import ScenarioStatusChip from './ScenarioStatusChip';
 import type { Scenario } from '@/types/scenario';
 import { fontFamilyMono } from '@/config/theme';
@@ -12,9 +13,11 @@ type ScenarioRowProps = {
 
 const ScenarioRow: React.FC<ScenarioRowProps> = ({ scenario }) => {
   const theme = useTheme();
+  const navigate = useNavigate();
 
   return (
     <Box
+      onClick={() => navigate(`/scenarios/${scenario.id}/edit`)}
       sx={{
         display: 'flex',
         alignItems: 'flex-start',
@@ -22,6 +25,8 @@ const ScenarioRow: React.FC<ScenarioRowProps> = ({ scenario }) => {
         px: 2,
         py: 1.5,
         borderBottom: `1px solid ${theme.palette.divider}`,
+        cursor: 'pointer',
+        '&:hover': { backgroundColor: theme.palette.action.hover },
       }}
     >
       <Box sx={{ flex: 1, minWidth: 0 }}>
