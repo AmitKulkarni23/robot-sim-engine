@@ -22,7 +22,7 @@ An engineer defines a scenario (factory cell, task, randomization ranges), runs 
 ## Hard Constraints
 
 - Simulation runs inside a **single AWS Lambda container image** (Python)
-- Trigger: Supabase Database Webhook → Lambda Function URL
+- Trigger: API call (webhook, CI, or manual) → Lambda Function URL
 - Physics + Rendering: MuJoCo, off-screen rendering via OSMesa, frames → MP4 via ffmpeg (imageio-ffmpeg)
 - Robot Model: MuJoCo Menagerie (Unitree G1 as HMND 01 stand-in)
 - Control Plane: AWS (DynamoDB, DDB Streams, Lambda, S3)

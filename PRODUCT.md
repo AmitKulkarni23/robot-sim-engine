@@ -28,7 +28,7 @@ Three things no incumbent offers together:
 
 ## Operating Context
 
-Engineers push control code to a repository. A Supabase database webhook fires, triggering a Lambda simulation run. The Lambda loads the robot model (Unitree G1 from MuJoCo Menagerie as HMND 01 stand-in), the scenario definition, and the control software. It steps MuJoCo physics, records frames via OSMesa, encodes video via ffmpeg, scores the run, and writes results to DynamoDB + S3. The dashboard shows run history, pass/fail verdicts, metrics, and video replays. Engineers compare runs across builds to catch regressions.
+Engineers push control code to a repository. A trigger (GitHub Actions webhook, manual API call, or scheduled cron) invokes the Lambda simulation run. The Lambda loads the robot model (Unitree G1 from MuJoCo Menagerie as HMND 01 stand-in), the scenario definition from DynamoDB, and the control software. It steps MuJoCo physics, records frames via OSMesa, encodes video via ffmpeg, scores the run, and writes results to DynamoDB + S3. The dashboard shows run history, pass/fail verdicts, metrics, and video replays. Engineers compare runs across builds to catch regressions.
 
 ## Capabilities and Constraints
 
@@ -43,7 +43,7 @@ Engineers push control code to a repository. A Supabase database webhook fires, 
 **Constraints:**
 - Entire simulation MUST run in a single AWS Lambda container image (Python)
 - MuJoCo, OSMesa, and ffmpeg are native dependencies that MUST fit in Lambda container
-- Trigger path: Supabase Database Webhook → Lambda Function URL
+- Trigger path: API call (webhook, CI, or manual) → Lambda Function URL
 - Control plane: AWS (DynamoDB, DDB Streams, Lambda, S3)
 - Robot model: Unitree G1 from MuJoCo Menagerie (stand-in for HMND 01)
 - No GPU — MuJoCo runs on CPU only

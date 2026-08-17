@@ -20,11 +20,9 @@ export interface RobotSimComputeStackProps extends cdk.StackProps {
  * RobotSimComputeStack — the single Lambda container that runs the entire
  * simulation engine (MuJoCo physics + OSMesa render + ffmpeg encode).
  *
- * NOTE: the Function URL is created with authType: NONE because Supabase
- * Database Webhooks cannot sign AWS SigV4 requests. The Lambda handler
- * (task 010) MUST validate a shared-secret header (e.g. X-Webhook-Secret)
- * on every invocation — that validation happens in application code, not
- * here, but omitting it would leave the endpoint fully unauthenticated.
+ * Function URL is currently disabled (re-enable when ready to accept
+ * external triggers). When enabled, use authType: NONE with a
+ * shared-secret header (X-Webhook-Secret) validated in the handler.
  */
 export class RobotSimComputeStack extends cdk.Stack {
   public readonly simulatorFunction: lambda.DockerImageFunction;

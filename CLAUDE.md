@@ -39,7 +39,7 @@ python -m pytest      # Run tests
 
 ## Hard Constraints
 - Simulation MUST run in a single AWS Lambda container image (Python)
-- Trigger: Supabase Database Webhook → Lambda Function URL
+- Trigger: API call (webhook, CI, or manual) → Lambda Function URL
 - MuJoCo + OSMesa + ffmpeg = native deps that MUST fit in Lambda container
 - Robot model: Unitree G1 from MuJoCo Menagerie
 - All customer-specific content lives in versioned site packs — zero engine changes per customer

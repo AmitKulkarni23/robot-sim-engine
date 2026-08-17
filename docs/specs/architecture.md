@@ -21,5 +21,5 @@ _None implemented yet._
   - `MODELS_BUCKET_NAME_ENV`
   - `SITE_PACKS_BUCKET_NAME_ENV`
 - **IAM grants**: read/write on both DynamoDB tables (Scenarios, SimulationResults); read/write on `video-replays` bucket; read-only on `robot-models` and `site-packs` buckets
-- **Trigger**: Function URL, `authType: NONE`, `allowedOrigins: []` — invoked server-to-server by a Supabase Database Webhook, which cannot sign AWS SigV4 requests. Because the URL has no AWS-level auth, the Lambda handler (task 010) MUST validate a shared-secret header (e.g. `X-Webhook-Secret`) on every invocation — this is an application-layer requirement, not enforced by CDK.
+- **Trigger**: Function URL (currently disabled). When re-enabled, will use `authType: NONE` with a shared-secret header (`X-Webhook-Secret`) validated in the Lambda handler. Invoked by CI webhooks, manual API calls, or scheduled triggers.
 - **Output**: Function URL exported via `CfnOutput` (`RobotSimSimulatorFunctionUrl`)

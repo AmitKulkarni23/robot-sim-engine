@@ -2,7 +2,7 @@
 
 ## Summary
 
-Build the Lambda container's entry point: receive the Supabase Database Webhook payload, load the target scenario and robot model, run the test harness, encode and upload the video replay, and write the result to DynamoDB. This wires together every prior task (004–009) into the single deployable unit referenced by the CDK compute stack (task 003) and is the last piece needed for an end-to-end simulation run.
+Build the Lambda container's entry point: receive the API call (webhook or manual) payload, load the target scenario and robot model, run the test harness, encode and upload the video replay, and write the result to DynamoDB. This wires together every prior task (004–009) into the single deployable unit referenced by the CDK compute stack (task 003) and is the last piece needed for an end-to-end simulation run.
 
 ## Read First
 
