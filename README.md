@@ -75,6 +75,37 @@ This project uses a phased design process:
 7. **Execute wave** → parallel implementation per phase
 8. **Ship** → test, commit, push, PR
 
+## Simulation Trigger Flow
+
+```
+Engineer pushes control code to main
+        ↓
+GitHub Actions `simulate.yml` fires
+        ↓
+Matrix strategy: runs ALL 5 scenarios in parallel (5 jobs)
+        ↓
+Each job does: curl -X POST $LAMBDA_FUNCTION_URL
+  -H "x-webhook-secret: $WEBHOOK_SECRET"
+  -d '{"scenario_id": "box-pickup-standard-5kg", "version": 1}'
+        ↓
+Lambda handler.py receives it:
+  1. Validates x-webhook-secret header
+  2. Parses scenario_id + version from JSON body
+  3. Loads scenario YAML from DynamoDB scenarios table
+  4. Downloads robot model (Unitree G1) from S3
+  5. Runs MuJoCo physics simulation via harness/runner.py
+  6. Records video frames → encodes MP4 → uploads to S3
+  7. Writes result to simulation-results DynamoDB table
+  8. Returns {"run_id": "uuid", "success": true/false}
+        ↓
+GitHub Actions checks success field
+  → true  = green check
+  → false = warning annotation
+  → non-200 HTTP = job fails
+```
+
+Triggers: auto on push to `main` (when `backend/src/control/`, `backend/scenarios/`, or `backend/scenes/` change), or manual via `workflow_dispatch`.
+
 ## Commands
 
 ### Frontend
