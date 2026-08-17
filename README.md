@@ -77,13 +77,43 @@ This project uses a phased design process:
 
 ## Commands
 
+### Frontend
+
 ```bash
-# Frontend
-cd frontend && bun install && bun run dev
+cd frontend
+bun install              # Install dependencies
+bun run dev              # Dev server at http://localhost:5173
+bun run build            # Production build (tsc + vite)
+bun run test             # Run vitest (16 tests)
+bun run test -- --run    # Run tests once (no watch)
+```
 
-# Infrastructure
-cd infra && bun install && bunx cdk synth && bunx cdk deploy --all
+### Backend
 
-# Backend (local)
-cd backend && pip install -r requirements.txt && python -m pytest
+```bash
+cd backend
+pip install -r requirements.txt        # Install dependencies
+pip install -r requirements-dev.txt    # Install dev/test deps
+python -m pytest                       # Run tests (42 tests)
+```
+
+### Infrastructure (CDK)
+
+```bash
+cd infra
+bun install              # Install dependencies
+bunx cdk synth           # Synthesize CloudFormation templates
+bunx cdk diff            # Preview changes before deploy
+bunx cdk bootstrap       # First-time setup for CDK in AWS account
+bunx cdk deploy --all    # Deploy all stacks to AWS
+bunx cdk destroy --all   # Tear down all stacks
+```
+
+### Vercel (Frontend Deployment)
+
+```bash
+cd frontend
+vercel                   # Preview deploy
+vercel --prod            # Production deploy
+vercel link              # Link to existing Vercel project
 ```
