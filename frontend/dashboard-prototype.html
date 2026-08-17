@@ -1,0 +1,1427 @@
+<title>Robot Sim Engine</title>
+<!--
+THESIS: A simulation dashboard that reads like a version-control diff — runs as commits,
+metrics as changed lines, regressions as deletions, improvements as additions. Refuses the
+dark-cockpit-with-neon-accents template and the hero-metric dashboard.
+OWN-WORLD: Diff-view color language (green/red/amber for pass/fail/changed), monospaced
+figures in tight columns, commit-hash run IDs, side-by-side comparison panels on a light
+cool-gray ground that matches engineers' daytime IDE.
+STORY: Engineer pushes code → opens dashboard → sees latest run verdict at a glance →
+drills into metrics diff against previous build → watches video replay → compares builds.
+FIRST VIEWPORT: Run history as a commit log. Each run is a row: hash, timestamp, scenario,
+verdict badge, key metric delta. Most recent run expanded with full verdict and diff table.
+FORM: Version control diff view, position 7, seed key 7ed5dcab.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review,
+the verdict, and DESIGN.md.
+-->
+<style>
+:root {
+  --ground: #F6F8FA;
+  --surface: #FFFFFF;
+  --surface-secondary: #F0F3F6;
+  --border: #D0D7DE;
+  --border-strong: #AFB8C1;
+  --text-primary: #1F2328;
+  --text-secondary: #656D76;
+  --text-tertiary: #8C959F;
+  --accent: #0969DA;
+  --accent-subtle: #DDF4FF;
+  --pass: #1A7F37;
+  --pass-bg: #DAFBE1;
+  --pass-border: #A7E3B6;
+  --fail: #CF222E;
+  --fail-bg: #FFEBE9;
+  --fail-border: #FDAEB7;
+  --changed: #9A6700;
+  --changed-bg: #FFF8C5;
+  --changed-border: #EAD370;
+  --sidebar-bg: #FFFFFF;
+  --sidebar-active: #F6F8FA;
+  --shadow: 0 1px 3px rgba(31,35,40,0.04);
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0D1117;
+    --surface: #161B22;
+    --surface-secondary: #1C2128;
+    --border: #30363D;
+    --border-strong: #484F58;
+    --text-primary: #E6EDF3;
+    --text-secondary: #8B949E;
+    --text-tertiary: #6E7681;
+    --accent: #58A6FF;
+    --accent-subtle: #121D2F;
+    --pass: #3FB950;
+    --pass-bg: #0D2818;
+    --pass-border: #196C2E;
+    --fail: #F85149;
+    --fail-bg: #3D1117;
+    --fail-border: #7D2126;
+    --changed: #D29922;
+    --changed-bg: #2E1800;
+    --changed-border: #6E4B00;
+    --sidebar-bg: #0D1117;
+    --sidebar-active: #161B22;
+    --shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground: #0D1117;
+  --surface: #161B22;
+  --surface-secondary: #1C2128;
+  --border: #30363D;
+  --border-strong: #484F58;
+  --text-primary: #E6EDF3;
+  --text-secondary: #8B949E;
+  --text-tertiary: #6E7681;
+  --accent: #58A6FF;
+  --accent-subtle: #121D2F;
+  --pass: #3FB950;
+  --pass-bg: #0D2818;
+  --pass-border: #196C2E;
+  --fail: #F85149;
+  --fail-bg: #3D1117;
+  --fail-border: #7D2126;
+  --changed: #D29922;
+  --changed-bg: #2E1800;
+  --changed-border: #6E4B00;
+  --sidebar-bg: #0D1117;
+  --sidebar-active: #161B22;
+  --shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--ground);
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 240px;
+  min-width: 240px;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.sidebar-header {
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.sidebar-logo svg {
+  width: 20px;
+  height: 20px;
+  color: var(--accent);
+}
+
+.sidebar-version {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+}
+
+.sidebar-nav {
+  padding: 8px;
+  flex: 1;
+}
+
+.nav-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 12px 8px 4px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.nav-item:hover {
+  background: var(--sidebar-active);
+  color: var(--text-primary);
+}
+
+.nav-item.active {
+  background: var(--sidebar-active);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.nav-item svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.nav-item .count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  background: var(--surface-secondary);
+  padding: 0 6px;
+  border-radius: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sidebar-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sidebar-footer .status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pass);
+}
+
+/* Main content */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* Top bar */
+.topbar {
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.topbar-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.topbar-breadcrumb .sep {
+  color: var(--text-tertiary);
+}
+
+.topbar-breadcrumb strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.topbar-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  transition: background 0.15s, border-color 0.15s;
+  font-family: var(--font-sans);
+}
+
+.btn:hover {
+  background: var(--surface-secondary);
+  border-color: var(--border-strong);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #FFFFFF;
+  border-color: var(--accent);
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+  background: var(--accent);
+}
+
+/* Content area */
+.content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Run list (commit log) */
+.run-list {
+  width: 420px;
+  min-width: 420px;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  background: var(--surface);
+}
+
+.run-list-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 1;
+}
+
+.run-list-header h2 {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.run-list-header .run-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.filter-tabs {
+  margin-left: auto;
+  display: flex;
+  gap: 2px;
+  background: var(--surface-secondary);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.filter-tab {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  font-family: var(--font-sans);
+  transition: background 0.15s, color 0.15s;
+}
+
+.filter-tab:hover {
+  color: var(--text-primary);
+}
+
+.filter-tab.active {
+  background: var(--surface);
+  color: var(--text-primary);
+  font-weight: 500;
+  box-shadow: var(--shadow);
+}
+
+.filter-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Run row */
+.run-row {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.1s;
+  display: flex;
+  gap: 10px;
+}
+
+.run-row:hover {
+  background: var(--surface-secondary);
+}
+
+.run-row.selected {
+  background: var(--accent-subtle);
+  border-left: 2px solid var(--accent);
+  padding-left: 14px;
+}
+
+.run-verdict-indicator {
+  width: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  margin: 2px 0;
+}
+
+.run-verdict-indicator.pass { background: var(--pass); }
+.run-verdict-indicator.fail { background: var(--fail); }
+.run-verdict-indicator.running { background: var(--changed); }
+
+.run-row-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.run-row-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.run-hash {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.run-scenario {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.run-row-bottom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 3px;
+}
+
+.run-time {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.run-build {
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.run-build svg {
+  width: 12px;
+  height: 12px;
+}
+
+.verdict-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-family: var(--font-mono);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.verdict-badge.pass {
+  background: var(--pass-bg);
+  color: var(--pass);
+  border: 1px solid var(--pass-border);
+}
+
+.verdict-badge.fail {
+  background: var(--fail-bg);
+  color: var(--fail);
+  border: 1px solid var(--fail-border);
+}
+
+.verdict-badge.running {
+  background: var(--changed-bg);
+  color: var(--changed);
+  border: 1px solid var(--changed-border);
+}
+
+.run-delta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.delta-pos { color: var(--pass); }
+.delta-neg { color: var(--fail); }
+.delta-neutral { color: var(--text-tertiary); }
+
+/* Detail panel */
+.detail {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  min-width: 0;
+}
+
+.detail-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.detail-header-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.detail-title {
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.detail-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+
+.detail-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.detail-meta-item svg {
+  width: 14px;
+  height: 14px;
+  color: var(--text-tertiary);
+}
+
+.detail-meta-item code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--surface-secondary);
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: var(--text-primary);
+}
+
+/* Sections */
+.section {
+  margin-bottom: 24px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.section-header svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-tertiary);
+}
+
+/* Metrics diff table */
+.diff-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.diff-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.diff-table th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--surface-secondary);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.diff-table td {
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+
+.diff-table tr:last-child td {
+  border-bottom: none;
+}
+
+.diff-table .metric-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.diff-table .metric-val {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.diff-table .metric-prev {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.diff-table .metric-delta {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.diff-row-pass {
+  background: var(--pass-bg);
+}
+
+.diff-row-fail {
+  background: var(--fail-bg);
+}
+
+.diff-row-changed {
+  background: var(--changed-bg);
+}
+
+/* Verdict summary card */
+.verdict-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.verdict-card-header {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.verdict-card-header.pass {
+  background: var(--pass-bg);
+  border-bottom: 1px solid var(--pass-border);
+  color: var(--pass);
+}
+
+.verdict-card-header.fail {
+  background: var(--fail-bg);
+  border-bottom: 1px solid var(--fail-border);
+  color: var(--fail);
+}
+
+.verdict-card-header svg {
+  width: 18px;
+  height: 18px;
+}
+
+.verdict-card-body {
+  padding: 12px 16px;
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.verdict-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.verdict-stat-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.verdict-stat-value {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Video placeholder */
+.video-container {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface-secondary);
+  aspect-ratio: 16/9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.video-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-tertiary);
+}
+
+.video-placeholder svg {
+  width: 40px;
+  height: 40px;
+}
+
+.video-placeholder span {
+  font-size: 13px;
+}
+
+.video-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 8px 12px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.6));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.video-controls .timecode {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(255,255,255,0.8);
+  font-variant-numeric: tabular-nums;
+}
+
+.video-scrubber {
+  flex: 1;
+  height: 3px;
+  background: rgba(255,255,255,0.25);
+  border-radius: 2px;
+  position: relative;
+}
+
+.video-scrubber-fill {
+  width: 35%;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+/* Violations list */
+.violation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.violation-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-size: 13px;
+}
+
+.violation-item.error {
+  border-color: var(--fail-border);
+  background: var(--fail-bg);
+}
+
+.violation-item.warning {
+  border-color: var(--changed-border);
+  background: var(--changed-bg);
+}
+
+.violation-severity {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.violation-severity.error {
+  background: var(--fail);
+  color: #FFFFFF;
+}
+
+.violation-severity.warning {
+  background: var(--changed);
+  color: #FFFFFF;
+}
+
+.violation-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.violation-text strong {
+  font-weight: 600;
+  display: block;
+}
+
+.violation-text span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.violation-time {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Comparison mode */
+.compare-banner {
+  background: var(--accent-subtle);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  font-size: 13px;
+}
+
+.compare-banner svg {
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.compare-banner code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--surface);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.compare-banner .vs {
+  color: var(--text-tertiary);
+  font-weight: 600;
+  font-size: 11px;
+}
+
+/* Timeline graph placeholder */
+.timeline-graph {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 16px;
+  height: 140px;
+  position: relative;
+  overflow: hidden;
+}
+
+.timeline-graph-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.timeline-graph canvas {
+  width: 100%;
+  height: 100px;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .sidebar { width: 200px; min-width: 200px; }
+  .run-list { width: 320px; min-width: 320px; }
+}
+
+@media (max-width: 768px) {
+  body { flex-direction: column; }
+  .sidebar {
+    width: 100%;
+    min-width: 100%;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .sidebar-header { border-bottom: none; padding: 8px 12px; }
+  .sidebar-nav {
+    display: flex;
+    flex-direction: row;
+    gap: 2px;
+    padding: 4px;
+    flex: 1;
+  }
+  .nav-section-label { display: none; }
+  .nav-item { white-space: nowrap; padding: 4px 8px; }
+  .nav-item .count { display: none; }
+  .sidebar-footer { display: none; }
+  .content { flex-direction: column; }
+  .run-list {
+    width: 100%;
+    min-width: 100%;
+    max-height: 200px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .detail { padding: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="7" r="4"/><path d="M10 11v5M7 13h6M5 17l2-2M15 17l-2-2"/></svg>
+      Robot Sim Engine
+    </div>
+    <div class="sidebar-version">v0.1.0-alpha</div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Simulation</div>
+    <div class="nav-item active" tabindex="0">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M2 4h12M2 8h12M2 12h12"/><circle cx="5" cy="4" r="1.5" fill="currentColor" stroke="none"/><circle cx="5" cy="8" r="1.5" fill="currentColor" stroke="none"/><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg>
+      Runs
+      <span class="count">47</span>
+    </div>
+    <div class="nav-item" tabindex="0">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M2 6h12"/><path d="M6 2v12"/></svg>
+      Scenarios
+      <span class="count">8</span>
+    </div>
+    <div class="nav-item" tabindex="0">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v12M12 2v12M1 8h14"/></svg>
+      Compare
+    </div>
+
+    <div class="nav-section-label">Config</div>
+    <div class="nav-item" tabindex="0">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h10M3 8h6M3 11h8"/></svg>
+      Site Packs
+      <span class="count">3</span>
+    </div>
+    <div class="nav-item" tabindex="0">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/></svg>
+      Settings
+    </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <span class="status-dot"></span>
+    Lambda connected
+  </div>
+</aside>
+
+<!-- Main -->
+<main class="main">
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="topbar-breadcrumb">
+      <span>hmnd-01</span>
+      <span class="sep">/</span>
+      <strong>factory-cell-alpha</strong>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn" tabindex="0">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v10M10 2v10M1 7h12"/></svg>
+        Compare
+      </button>
+      <button class="btn btn-primary" tabindex="0">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5,3 12,7 5,11"/></svg>
+        New Run
+      </button>
+    </div>
+  </header>
+
+  <div class="content">
+    <!-- Run list -->
+    <div class="run-list">
+      <div class="run-list-header">
+        <h2>Run History</h2>
+        <span class="run-count">47 runs</span>
+        <div class="filter-tabs">
+          <button class="filter-tab active" tabindex="0">All</button>
+          <button class="filter-tab" tabindex="0">Pass</button>
+          <button class="filter-tab" tabindex="0">Fail</button>
+        </div>
+      </div>
+
+      <div class="run-row selected">
+        <div class="run-verdict-indicator fail"></div>
+        <div class="run-row-content">
+          <div class="run-row-top">
+            <span class="run-hash">a3f7c21</span>
+            <span class="run-scenario">Box pickup — randomized weight</span>
+            <span class="verdict-badge fail">Fail</span>
+          </div>
+          <div class="run-row-bottom">
+            <span class="run-time">2 min ago</span>
+            <span class="run-build"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M6 1v4l2.5 1.5"/><circle cx="6" cy="6" r="5"/></svg> build #184</span>
+            <span class="run-delta delta-neg">-12% grip</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="run-row">
+        <div class="run-verdict-indicator pass"></div>
+        <div class="run-row-content">
+          <div class="run-row-top">
+            <span class="run-hash">e9b4d08</span>
+            <span class="run-scenario">Box pickup — standard 5kg</span>
+            <span class="verdict-badge pass">Pass</span>
+          </div>
+          <div class="run-row-bottom">
+            <span class="run-time">18 min ago</span>
+            <span class="run-build"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M6 1v4l2.5 1.5"/><circle cx="6" cy="6" r="5"/></svg> build #184</span>
+            <span class="run-delta delta-pos">+3% speed</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="run-row">
+        <div class="run-verdict-indicator pass"></div>
+        <div class="run-row-content">
+          <div class="run-row-top">
+            <span class="run-hash">7c1fa93</span>
+            <span class="run-scenario">Walk to station B</span>
+            <span class="verdict-badge pass">Pass</span>
+          </div>
+          <div class="run-row-bottom">
+            <span class="run-time">34 min ago</span>
+            <span class="run-build"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M6 1v4l2.5 1.5"/><circle cx="6" cy="6" r="5"/></svg> build #183</span>
+            <span class="run-delta delta-neutral">±0%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="run-row">
+        <div class="run-verdict-indicator fail"></div>
+        <div class="run-row-content">
+          <div class="run-row-top">
+            <span class="run-hash">2d8e5b1</span>
+            <span class="run-scenario">Pallet stack — 3 box sequence</span>
+            <span class="verdict-badge fail">Fail</span>
+          </div>
+          <div class="run-row-bottom">
+            <span class="run-time">1 hr ago</span>
+            <span class="run-build"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M6 1v4l2.5 1.5"/><circle cx="6" cy="6" r="5"/></svg> build #183</span>
+            <span class="run-delta delta-neg">collision</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="run-row">
+        <div class="run-verdict-indicator pass"></div>
+        <div class="run-row-content">
+          <div class="run-row-top">
+            <span class="run-hash">f4a2c67</span>
+            <span class="run-scenario">Walk to station B</span>
+            <span class="verdict-badge pass">Pass</span>
+          </div>
+          <div class="run-row-bottom">
+            <span class="run-time">2 hr ago</span>
+            <span class="run-build"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M6 1v4l2.5 1.5"/><circle cx="6" cy="6" r="5"/></svg> build #182</span>
+            <span class="run-delta delta-pos">+8% balance</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="run-row">
+        <div class="run-verdict-indicator running"></div>
+        <div class="run-row-content">
+          <div class="run-row-top">
+            <span class="run-hash">b19d3e4</span>
+            <span class="run-scenario">Obstacle avoidance — cones</span>
+            <span class="verdict-badge running">Running</span>
+          </div>
+          <div class="run-row-bottom">
+            <span class="run-time">just now</span>
+            <span class="run-build"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M6 1v4l2.5 1.5"/><circle cx="6" cy="6" r="5"/></svg> build #185</span>
+            <span class="run-delta delta-neutral">pending</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="run-row">
+        <div class="run-verdict-indicator pass"></div>
+        <div class="run-row-content">
+          <div class="run-row-top">
+            <span class="run-hash">88c4e19</span>
+            <span class="run-scenario">Box pickup — standard 5kg</span>
+            <span class="verdict-badge pass">Pass</span>
+          </div>
+          <div class="run-row-bottom">
+            <span class="run-time">3 hr ago</span>
+            <span class="run-build"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M6 1v4l2.5 1.5"/><circle cx="6" cy="6" r="5"/></svg> build #181</span>
+            <span class="run-delta delta-pos">+1% grip</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detail panel -->
+    <div class="detail">
+      <div class="detail-header">
+        <div class="detail-header-content">
+          <div class="detail-title">
+            <span class="verdict-badge fail" style="font-size: 13px; padding: 2px 8px;">Fail</span>
+            Box pickup — randomized weight
+          </div>
+          <div class="detail-meta">
+            <span class="detail-meta-item">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M7 1v5l3 1.5"/><circle cx="7" cy="7" r="6"/></svg>
+              2 minutes ago
+            </span>
+            <span class="detail-meta-item">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="6"/><path d="M7 4v3h3"/></svg>
+              Duration: <code>14.3s</code>
+            </span>
+            <span class="detail-meta-item">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l4 4M11 3L7 7M7 7v4"/></svg>
+              Commit: <code>a3f7c21</code>
+            </span>
+            <span class="detail-meta-item">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="10" height="8" rx="1.5"/><path d="M2 6h10"/></svg>
+              Build: <code>#184</code>
+            </span>
+            <span class="detail-meta-item">
+              <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1l2 4h4l-3.5 2.5L11 12 7 9l-4 3 1.5-4.5L1 5h4z"/></svg>
+              Model: <code>unitree-g1</code>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Verdict card -->
+      <div class="section">
+        <div class="verdict-card">
+          <div class="verdict-card-header fail">
+            <svg viewBox="0 0 18 18" fill="currentColor"><path d="M9 1a8 8 0 100 16A8 8 0 009 1zm3.54 10.46a.75.75 0 01-1.06 0L9 9.06l-2.47 2.4a.75.75 0 11-1.06-1.06L7.94 8 5.47 5.54a.75.75 0 011.06-1.06L9 6.94l2.47-2.46a.75.75 0 111.06 1.06L10.06 8l2.48 2.46a.75.75 0 010 1.06z"/></svg>
+            Simulation Failed — grip force insufficient for randomized weight
+          </div>
+          <div class="verdict-card-body">
+            <div class="verdict-stat">
+              <span class="verdict-stat-label">Duration</span>
+              <span class="verdict-stat-value">14.3s</span>
+            </div>
+            <div class="verdict-stat">
+              <span class="verdict-stat-label">Steps Simulated</span>
+              <span class="verdict-stat-value" style="font-variant-numeric: tabular-nums;">7,142</span>
+            </div>
+            <div class="verdict-stat">
+              <span class="verdict-stat-label">Failure At</span>
+              <span class="verdict-stat-value" style="color: var(--fail);">t=8.4s</span>
+            </div>
+            <div class="verdict-stat">
+              <span class="verdict-stat-label">Box Weight</span>
+              <span class="verdict-stat-value">11.2 kg</span>
+            </div>
+            <div class="verdict-stat">
+              <span class="verdict-stat-label">Violations</span>
+              <span class="verdict-stat-value" style="color: var(--fail);">2</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Metrics diff -->
+      <div class="section">
+        <div class="section-header">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v12M12 2v12M1 8h14"/></svg>
+          Metrics vs Previous Run
+        </div>
+        <div class="diff-table-wrap">
+          <table class="diff-table">
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th>Current</th>
+                <th>Previous</th>
+                <th>Delta</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="diff-row-fail">
+                <td class="metric-name">Grip Force (N)</td>
+                <td class="metric-val">42.1</td>
+                <td class="metric-prev">48.3</td>
+                <td class="metric-delta delta-neg">-12.8%</td>
+              </tr>
+              <tr class="diff-row-fail">
+                <td class="metric-name">Object Stability</td>
+                <td class="metric-val">0.34</td>
+                <td class="metric-prev">0.91</td>
+                <td class="metric-delta delta-neg">-62.6%</td>
+              </tr>
+              <tr class="diff-row-changed">
+                <td class="metric-name">Approach Accuracy (mm)</td>
+                <td class="metric-val">3.8</td>
+                <td class="metric-prev">4.1</td>
+                <td class="metric-delta delta-pos">+7.3%</td>
+              </tr>
+              <tr>
+                <td class="metric-name">Joint Torque Peak (Nm)</td>
+                <td class="metric-val">23.4</td>
+                <td class="metric-prev">23.1</td>
+                <td class="metric-delta delta-neutral">+1.3%</td>
+              </tr>
+              <tr>
+                <td class="metric-name">Energy Consumed (J)</td>
+                <td class="metric-val">187.2</td>
+                <td class="metric-prev">184.9</td>
+                <td class="metric-delta delta-neutral">+1.2%</td>
+              </tr>
+              <tr class="diff-row-pass">
+                <td class="metric-name">Path Smoothness</td>
+                <td class="metric-val">0.94</td>
+                <td class="metric-prev">0.89</td>
+                <td class="metric-delta delta-pos">+5.6%</td>
+              </tr>
+              <tr>
+                <td class="metric-name">Cycle Time (s)</td>
+                <td class="metric-val">8.4</td>
+                <td class="metric-prev">9.1</td>
+                <td class="metric-delta delta-pos">-7.7%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Video replay -->
+      <div class="section">
+        <div class="section-header">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="10" rx="2"/><polygon points="6.5,6 11,8 6.5,10" fill="currentColor" stroke="none"/></svg>
+          Video Replay
+        </div>
+        <div class="video-container">
+          <div class="video-placeholder">
+            <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="8" width="32" height="24" rx="3"/>
+              <polygon points="16,14 28,20 16,26" fill="currentColor" opacity="0.3" stroke="none"/>
+              <polygon points="16,14 28,20 16,26"/>
+            </svg>
+            <span>Simulation replay — box pickup at t=0s to failure at t=8.4s</span>
+          </div>
+          <div class="video-controls">
+            <span class="timecode">02:34 / 08:40</span>
+            <div class="video-scrubber"><div class="video-scrubber-fill"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Violations -->
+      <div class="section">
+        <div class="section-header">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1L1 14h14L8 1z"/><path d="M8 6v3M8 11.5v.5"/></svg>
+          Violations (2)
+        </div>
+        <div class="violation-list">
+          <div class="violation-item error">
+            <span class="violation-severity error">Error</span>
+            <div class="violation-text">
+              <strong>Object dropped during transport</strong>
+              <span>Box left gripper contact at height 0.82m — grip force 42.1N below threshold 55N for 11.2kg payload</span>
+            </div>
+            <span class="violation-time">t=8.41s</span>
+          </div>
+          <div class="violation-item warning">
+            <span class="violation-severity warning">Warn</span>
+            <div class="violation-text">
+              <strong>Joint torque approaching limit</strong>
+              <span>Right wrist joint reached 94% of rated torque during lift phase</span>
+            </div>
+            <span class="violation-time">t=6.22s</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Success rate timeline -->
+      <div class="section">
+        <div class="section-header">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,12 5,6 8,9 11,3 14,7"/></svg>
+          Pass Rate — Last 20 Builds
+        </div>
+        <div class="timeline-graph">
+          <canvas id="chart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const canvas = document.getElementById('chart');
+if (canvas) {
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = 100 * dpr;
+  ctx.scale(dpr, dpr);
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = '100px';
+
+  const w = rect.width;
+  const h = 100;
+  const data = [85,90,88,92,95,87,80,75,82,88,90,85,78,82,90,88,85,92,80,72];
+  const pad = { l: 30, r: 10, t: 8, b: 20 };
+  const pw = w - pad.l - pad.r;
+  const ph = h - pad.t - pad.b;
+
+  const style = getComputedStyle(document.documentElement);
+  const textColor = style.getPropertyValue('--text-tertiary').trim();
+  const borderColor = style.getPropertyValue('--border').trim();
+  const passColor = style.getPropertyValue('--pass').trim();
+  const failColor = style.getPropertyValue('--fail').trim();
+
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 0.5;
+  for (let pct of [50, 75, 100]) {
+    const y = pad.t + ph - ((pct - 50) / 50) * ph;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+    ctx.fillStyle = textColor;
+    ctx.font = '10px ui-monospace, monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(pct + '%', pad.l - 4, y + 3);
+  }
+
+  const points = data.map((v, i) => ({
+    x: pad.l + (i / (data.length - 1)) * pw,
+    y: pad.t + ph - ((v - 50) / 50) * ph,
+    v
+  }));
+
+  // Area fill
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+  ctx.lineTo(points[points.length-1].x, pad.t + ph);
+  ctx.lineTo(points[0].x, pad.t + ph);
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + ph);
+  grad.addColorStop(0, passColor + '20');
+  grad.addColorStop(1, passColor + '05');
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+  ctx.strokeStyle = passColor;
+  ctx.lineWidth = 1.5;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  // Dots
+  points.forEach((p, i) => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, i === points.length - 1 ? 4 : 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = p.v < 80 ? failColor : passColor;
+    ctx.fill();
+    if (i === points.length - 1) {
+      ctx.strokeStyle = style.getPropertyValue('--surface').trim();
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  });
+
+  // Build labels
+  ctx.fillStyle = textColor;
+  ctx.font = '9px ui-monospace, monospace';
+  ctx.textAlign = 'center';
+  [0, 4, 9, 14, 19].forEach(i => {
+    ctx.fillText('#' + (166 + i), points[i].x, h - 4);
+  });
+}
+</script>
