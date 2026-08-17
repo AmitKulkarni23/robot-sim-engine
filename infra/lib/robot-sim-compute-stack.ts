@@ -28,7 +28,6 @@ export interface RobotSimComputeStackProps extends cdk.StackProps {
  */
 export class RobotSimComputeStack extends cdk.Stack {
   public readonly simulatorFunction: lambda.DockerImageFunction;
-  public readonly functionUrl: lambda.FunctionUrl;
 
   constructor(scope: Construct, id: string, props: RobotSimComputeStackProps) {
     super(scope, id, props);
@@ -62,23 +61,8 @@ export class RobotSimComputeStack extends cdk.Stack {
     props.robotModelsBucket.grantRead(this.simulatorFunction);
     props.sitePacksBucket.grantRead(this.simulatorFunction);
 
-    // Function URL — authType NONE is intentional (see class doc above).
-    // Supabase calls server-to-server, never from a browser, so no CORS
-    // origins are allowed.
-    this.functionUrl = this.simulatorFunction.addFunctionUrl({
-      authType: lambda.FunctionUrlAuthType.NONE,
-      cors: {
-        allowedOrigins: [],
-      },
-    });
-
     // ======================
     // 3. OUTPUTS
     // ======================
-
-    new cdk.CfnOutput(this, 'RobotSimSimulatorFunctionUrlOutput', {
-      value: this.functionUrl.url,
-      exportName: 'RobotSimSimulatorFunctionUrl',
-    });
   }
 }
