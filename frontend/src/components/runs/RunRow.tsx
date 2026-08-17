@@ -2,7 +2,7 @@ import React from 'react';
 import Box from '@mui/material/Box';
 import ButtonBase from '@mui/material/ButtonBase';
 import Typography from '@mui/material/Typography';
-import { useTheme } from '@mui/material/styles';
+import { useTheme, type Theme } from '@mui/material/styles';
 import VerdictBadge from './VerdictBadge';
 import type { Run } from '@/types/run';
 import { formatRelativeTime, formatBuildNumber } from '@/utils/format';
@@ -14,13 +14,13 @@ type RunRowProps = {
   onSelect: (runId: string) => void;
 };
 
-const deltaColor = (theme: ReturnType<typeof useTheme>, direction: Run['keyMetricDeltaDirection']) => {
+const deltaColor = (theme: Theme, direction: Run['keyMetricDeltaDirection']) => {
   if (direction === 'pos') return theme.palette.success.main;
   if (direction === 'neg') return theme.palette.error.main;
   return theme.palette.text.disabled;
 };
 
-const indicatorColor = (theme: ReturnType<typeof useTheme>, verdict: Run['verdict']) => {
+const indicatorColor = (theme: Theme, verdict: Run['verdict']) => {
   if (verdict === 'pass') return theme.palette.success.main;
   if (verdict === 'fail') return theme.palette.error.main;
   return theme.palette.warning.main;

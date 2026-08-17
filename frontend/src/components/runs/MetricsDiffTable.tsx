@@ -7,7 +7,7 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
-import { useTheme } from '@mui/material/styles';
+import { useTheme, type Theme } from '@mui/material/styles';
 import type { MetricStatus, MetricValue } from '@/types/run';
 import { fontFamilyMono } from '@/config/theme';
 
@@ -15,14 +15,14 @@ type MetricsDiffTableProps = {
   metrics: MetricValue[];
 };
 
-const rowBackground = (theme: ReturnType<typeof useTheme>, status: MetricStatus) => {
+const rowBackground = (theme: Theme, status: MetricStatus) => {
   if (status === 'pass') return theme.palette.success.light;
   if (status === 'fail') return theme.palette.error.light;
   if (status === 'changed') return theme.palette.warning.light;
   return 'transparent';
 };
 
-const deltaColor = (theme: ReturnType<typeof useTheme>, deltaPct: number | null) => {
+const deltaColor = (theme: Theme, deltaPct: number | null) => {
   if (deltaPct === null || deltaPct === 0) return theme.palette.text.disabled;
   return deltaPct > 0 ? theme.palette.success.main : theme.palette.error.main;
 };

@@ -1,6 +1,7 @@
 import React from 'react';
 import Chip from '@mui/material/Chip';
 import { useTheme } from '@mui/material/styles';
+import type { PaletteColor } from '@mui/material/styles';
 import type { ScenarioStatus } from '@/types/scenario';
 import { fontFamilyMono } from '@/config/theme';
 
@@ -16,16 +17,16 @@ const LABELS: Record<ScenarioStatus, string> = {
 
 const ScenarioStatusChip: React.FC<ScenarioStatusChipProps> = ({ status }) => {
   const theme = useTheme();
-  const color =
+  const paletteColor: PaletteColor =
     status === 'published'
       ? theme.palette.success
       : status === 'draft'
         ? theme.palette.warning
-        : theme.palette.text;
+        : theme.palette.info;
 
-  const backgroundColor = status === 'archived' ? theme.palette.action.hover : color.light;
-  const borderColor = status === 'archived' ? theme.palette.divider : color.dark;
-  const textColor = status === 'archived' ? theme.palette.text.secondary : color.main;
+  const backgroundColor = status === 'archived' ? theme.palette.action.hover : paletteColor.light;
+  const borderColor = status === 'archived' ? theme.palette.divider : paletteColor.dark;
+  const textColor = status === 'archived' ? theme.palette.text.secondary : paletteColor.main;
 
   return (
     <Chip
