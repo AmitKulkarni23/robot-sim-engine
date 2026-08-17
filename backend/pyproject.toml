@@ -1,0 +1,9 @@
+[project]
+name = "robot-sim-engine-backend"
+version = "0.1.0"
+description = "Python Lambda backend for the Robot Sim Engine -- MuJoCo physics simulation, control interface, and test harness."
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
