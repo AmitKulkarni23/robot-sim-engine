@@ -1,4 +1,4 @@
-export type ScenarioStatus = 'draft' | 'published' | 'archived';
+export type ScenarioStatus = 'draft' | 'published' | 'archived' | 'queued' | 'completed';
 
 export interface Scenario {
   id: string;

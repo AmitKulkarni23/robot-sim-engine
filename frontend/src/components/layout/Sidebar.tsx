@@ -7,11 +7,13 @@ import PsychologyIcon from '@mui/icons-material/Psychology';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import CategoryIcon from '@mui/icons-material/Category';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
+import GridOnIcon from '@mui/icons-material/GridOn';
 import { fontFamilyMono } from '@/config/theme';
 
 const NAV_ITEMS = [
   { to: '/runs', label: 'Runs', icon: ListAltIcon },
   { to: '/scenarios', label: 'Scenarios', icon: CategoryIcon },
+  { to: '/floor', label: 'Factory Floor', icon: GridOnIcon },
   { to: '/compare', label: 'Compare', icon: CompareArrowsIcon },
 ];
 

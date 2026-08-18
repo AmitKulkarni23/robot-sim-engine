@@ -241,6 +241,37 @@ def _handle_create_scenario(event: dict, dynamodb_client) -> dict:
     })
 
 
+def _handle_queue_scenario(dynamodb_client, scenario_id: str) -> dict:
+    scenarios_table = os.environ[SCENARIOS_TABLE_NAME_ENV]
+    resp = dynamodb_client.query(
+        TableName=scenarios_table,
+        KeyConditionExpression="scenarioId = :sid",
+        ExpressionAttributeValues={":sid": {"S": scenario_id}},
+        ScanIndexForward=False,
+        Limit=1,
+    )
+    items = resp.get("Items", [])
+    if not items:
+        return _response(404, {"error": "Scenario not found"})
+
+    item = items[0]
+    version = item["version"]["N"]
+    now = datetime.now(timezone.utc).isoformat()
+
+    dynamodb_client.update_item(
+        TableName=scenarios_table,
+        Key={"scenarioId": {"S": scenario_id}, "version": {"N": version}},
+        UpdateExpression="SET #s = :status, updatedAt = :now",
+        ExpressionAttributeNames={"#s": "status"},
+        ExpressionAttributeValues={
+            ":status": {"S": "queued"},
+            ":now": {"S": now},
+        },
+    )
+
+    return _response(200, {"id": scenario_id, "status": "queued"})
+
+
 def _handle_simulate(event: dict, dynamodb_client) -> dict:
     try:
         payload = json.loads(event.get("body") or "{}")
@@ -328,7 +359,47 @@ def _check_auth(event: dict) -> dict | None:
     return None
 
 
+def _handle_stream_event(event: dict) -> None:
+    """Process DDB Stream records — triggered when scenario status changes to 'queued'."""
+    dynamodb_client = boto3.client("dynamodb")
+    for record in event.get("Records", []):
+        if record.get("eventSource") != "aws:dynamodb":
+            continue
+        new_image = record.get("dynamodb", {}).get("NewImage", {})
+        scenario_id = new_image.get("scenarioId", {}).get("S")
+        version = new_image.get("version", {}).get("N")
+        if not scenario_id or not version:
+            logger.warning("Stream record missing scenarioId or version, skipping")
+            continue
+
+        logger.info("Stream trigger: running scenario %s v%s", scenario_id, version)
+        simulate_event = {
+            "body": json.dumps({
+                "scenario_id": scenario_id,
+                "version": int(version),
+            }),
+            "requestContext": {"http": {"method": "POST", "path": "/"}},
+            "headers": {},
+        }
+        _handle_simulate(simulate_event, dynamodb_client)
+
+        dynamodb_client.update_item(
+            TableName=os.environ[SCENARIOS_TABLE_NAME_ENV],
+            Key={"scenarioId": {"S": scenario_id}, "version": {"N": version}},
+            UpdateExpression="SET #s = :status, updatedAt = :now",
+            ExpressionAttributeNames={"#s": "status"},
+            ExpressionAttributeValues={
+                ":status": {"S": "completed"},
+                ":now": {"S": datetime.now(timezone.utc).isoformat()},
+            },
+        )
+
+
 def handler(event: dict, context) -> dict:
+    if "Records" in event and event.get("Records", [{}])[0].get("eventSource") == "aws:dynamodb":
+        _handle_stream_event(event)
+        return _response(200, {"message": "Stream records processed"})
+
     method, path = _get_method_and_path(event)
 
     if method == "OPTIONS":
@@ -357,6 +428,9 @@ def handler(event: dict, context) -> dict:
         if method == "POST":
             if path == "/scenarios":
                 return _handle_create_scenario(event, dynamodb_client)
+            if path.endswith("/run") and path.startswith("/scenarios/"):
+                scenario_id = path.removeprefix("/scenarios/").removesuffix("/run")
+                return _handle_queue_scenario(dynamodb_client, scenario_id)
             return _handle_simulate(event, dynamodb_client)
 
         return _response(405, {"error": "Method not allowed"})

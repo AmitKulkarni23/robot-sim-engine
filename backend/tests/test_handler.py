@@ -438,3 +438,131 @@ def test_handler_options_should_return_204():
     response = handler_module.handler(event, None)
 
     assert response["statusCode"] == 204
+
+
+def _post_run_event(scenario_id, secret=SECRET):
+    headers = {}
+    if secret is not None:
+        headers["x-webhook-secret"] = secret
+    return {
+        "headers": headers,
+        "body": None,
+        "requestContext": {"http": {"method": "POST", "path": f"/scenarios/{scenario_id}/run"}},
+    }
+
+
+@mock_aws
+def test_post_scenario_run_should_set_status_to_queued():
+    client = boto3.client("dynamodb", region_name="us-east-1")
+    _create_tables(client)
+    client.put_item(
+        TableName=SCENARIOS_TABLE,
+        Item={
+            "scenarioId": {"S": "box-pickup"},
+            "version": {"N": "1"},
+            "name": {"S": "Box Pickup"},
+            "status": {"S": "draft"},
+            "description": {"S": "Pick up a box"},
+            "robotModel": {"S": "unitree-g1"},
+            "updatedAt": {"S": "2026-08-16T12:00:00Z"},
+            "yaml_content": {"S": VALID_SCENARIO_YAML},
+            "runCount": {"N": "0"},
+            "passRate": {"N": "0"},
+        },
+    )
+
+    response = handler_module.handler(_post_run_event("box-pickup"), None)
+
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert body["status"] == "queued"
+    assert body["id"] == "box-pickup"
+
+    item = client.get_item(
+        TableName=SCENARIOS_TABLE,
+        Key={"scenarioId": {"S": "box-pickup"}, "version": {"N": "1"}},
+    )["Item"]
+    assert item["status"]["S"] == "queued"
+
+
+@mock_aws
+def test_post_scenario_run_given_missing_scenario_should_return_404():
+    client = boto3.client("dynamodb", region_name="us-east-1")
+    _create_tables(client)
+
+    response = handler_module.handler(_post_run_event("nonexistent"), None)
+
+    assert response["statusCode"] == 404
+
+
+def _stream_event(scenario_id, version, new_status="queued", old_status="draft"):
+    return {
+        "Records": [
+            {
+                "eventSource": "aws:dynamodb",
+                "eventName": "MODIFY",
+                "dynamodb": {
+                    "NewImage": {
+                        "scenarioId": {"S": scenario_id},
+                        "version": {"N": str(version)},
+                        "status": {"S": new_status},
+                        "yaml_content": {"S": "yaml-stub"},
+                        "name": {"S": "Test"},
+                    },
+                    "OldImage": {
+                        "scenarioId": {"S": scenario_id},
+                        "version": {"N": str(version)},
+                        "status": {"S": old_status},
+                    },
+                },
+            }
+        ]
+    }
+
+
+@mock_aws
+def test_handler_given_stream_event_should_run_simulation_and_set_status_completed():
+    client = boto3.client("dynamodb", region_name="us-east-1")
+    _create_tables(client)
+    client.put_item(
+        TableName=SCENARIOS_TABLE,
+        Item={
+            "scenarioId": {"S": "s1"},
+            "version": {"N": "1"},
+            "yaml_content": {"S": "yaml-stub"},
+            "name": {"S": "Test"},
+            "status": {"S": "queued"},
+            "robotModel": {"S": "unitree-g1"},
+        },
+    )
+
+    s3 = boto3.client("s3", region_name="us-east-1")
+    s3.create_bucket(Bucket="video-bucket")
+
+    fake_scenario = MagicMock(robot_model="unitree_g1")
+    fake_result = RunResult(
+        success=True, duration_s=1.0, steps_simulated=500,
+        failures=[], violations=[], metrics=[], video_frames=[],
+    )
+
+    with patch("handler.load_scenario", return_value=fake_scenario), \
+         patch("handler.get_robot_model", return_value="/tmp/model.mjcf"), \
+         patch("handler.load_controller", return_value=MagicMock()), \
+         patch("handler.run_scenario", return_value=fake_result), \
+         patch("handler.VideoRecorder") as mock_recorder, \
+         patch("handler.upload_replay", return_value="s3://bucket/replay.mp4"):
+        mock_recorder.return_value = MagicMock()
+
+        response = handler_module.handler(_stream_event("s1", 1), None)
+
+    assert response["statusCode"] == 200
+
+    item = client.get_item(
+        TableName=SCENARIOS_TABLE,
+        Key={"scenarioId": {"S": "s1"}, "version": {"N": "1"}},
+    )["Item"]
+    assert item["status"]["S"] == "completed"
+
+    results = client.scan(TableName=RESULTS_TABLE)["Items"]
+    assert len(results) == 1
+    assert results[0]["success"]["BOOL"] is True

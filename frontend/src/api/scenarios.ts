@@ -17,6 +17,17 @@ export const getScenario = async (id: string): Promise<ScenarioDetail> => {
   return response.json();
 };
 
+export const runScenario = async (id: string): Promise<{ id: string; status: string }> => {
+  const response = await apiFetch(`/scenarios/${encodeURIComponent(id)}/run`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || `HTTP ${response.status}`);
+  }
+  return response.json();
+};
+
 export const createScenario = async (yamlContent: string): Promise<CreateScenarioResponse> => {
   const response = await apiFetch('/scenarios', {
     method: 'POST',

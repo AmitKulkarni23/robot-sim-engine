@@ -2,6 +2,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { RobotSimDataStack } from '../lib/robot-sim-data-stack';
 import { RobotSimComputeStack } from '../lib/robot-sim-compute-stack';
+import { RobotSimTriggerStack } from '../lib/robot-sim-trigger-stack';
 
 const app = new cdk.App();
 
@@ -17,7 +18,7 @@ const dataStack = new RobotSimDataStack(app, 'RobotSimDataStack', {
   environment,
 });
 
-new RobotSimComputeStack(app, 'RobotSimComputeStack', {
+const computeStack = new RobotSimComputeStack(app, 'RobotSimComputeStack', {
   env,
   environment,
   scenariosTable: dataStack.scenariosTable,
@@ -25,4 +26,11 @@ new RobotSimComputeStack(app, 'RobotSimComputeStack', {
   videoReplaysBucket: dataStack.videoReplaysBucket,
   robotModelsBucket: dataStack.robotModelsBucket,
   sitePacksBucket: dataStack.sitePacksBucket,
+});
+
+new RobotSimTriggerStack(app, 'RobotSimTriggerStack', {
+  env,
+  environment,
+  scenariosTable: dataStack.scenariosTable,
+  simulatorFunction: computeStack.simulatorFunction,
 });

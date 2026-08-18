@@ -41,9 +41,7 @@ export class RobotSimDataStack extends cdk.Stack {
       partitionKey: { name: 'scenarioId', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'version', type: dynamodb.AttributeType.NUMBER },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      // Dev/non-prod deployments MUST use DESTROY; the SimulationResults table
-      // additionally requires RETAIN in prod (see below). Scenarios follows the
-      // same environment-aware policy for consistency.
+      stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
       removalPolicy,
     });
 
@@ -119,6 +117,10 @@ export class RobotSimDataStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'RobotSimScenariosTableArnOutput', {
       value: this.scenariosTable.tableArn,
       exportName: 'RobotSimScenariosTableArn',
+    });
+    new cdk.CfnOutput(this, 'RobotSimScenariosTableStreamArnOutput', {
+      value: this.scenariosTable.tableStreamArn ?? '',
+      exportName: 'RobotSimScenariosTableStreamArn',
     });
 
     new cdk.CfnOutput(this, 'RobotSimResultsTableNameOutput', {

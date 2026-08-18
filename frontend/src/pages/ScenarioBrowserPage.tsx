@@ -17,11 +17,12 @@ const FILTER_OPTIONS: { value: ScenarioFilter; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'published', label: 'Published' },
   { value: 'draft', label: 'Draft' },
+  { value: 'queued', label: 'Queued' },
   { value: 'archived', label: 'Archived' },
 ];
 
 const ScenarioBrowserPage: React.FC = () => {
-  const { data: scenarios, loading, error } = useScenarios();
+  const { data: scenarios, loading, error, refetch } = useScenarios();
   const [filter, setFilter] = useState<ScenarioFilter>('all');
   const navigate = useNavigate();
 
@@ -57,7 +58,7 @@ const ScenarioBrowserPage: React.FC = () => {
             </Box>
             <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1.5, backgroundColor: 'background.paper' }}>
               {filteredScenarios.map((scenario) => (
-                <ScenarioRow key={scenario.id} scenario={scenario} />
+                <ScenarioRow key={scenario.id} scenario={scenario} onStatusChange={refetch} />
               ))}
               {filteredScenarios.length === 0 && (
                 <Box sx={{ p: 3 }}>
