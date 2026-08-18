@@ -138,12 +138,12 @@ def test_handler_given_valid_request_should_run_scenario_and_write_result_record
         failures=[], violations=[], metrics=[], video_frames=[],
     )
 
-    with patch("handler.load_scenario", return_value=fake_scenario) as mock_load_scenario, \
-         patch("handler.get_robot_model", return_value="/tmp/model.mjcf") as mock_get_model, \
-         patch("handler.load_controller", return_value=MagicMock()), \
-         patch("handler.run_scenario", return_value=fake_result) as mock_run_scenario, \
-         patch("handler.VideoRecorder") as mock_video_recorder_cls, \
-         patch("handler.upload_replay", return_value="s3://video-bucket/s1/run/replay.mp4") as mock_upload:
+    with patch("scenario.loader.load_scenario", return_value=fake_scenario) as mock_load_scenario, \
+         patch("robot_model.loader.get_robot_model", return_value="/tmp/model.mjcf") as mock_get_model, \
+         patch("control.factory.load_controller", return_value=MagicMock()), \
+         patch("harness.runner.run_scenario", return_value=fake_result) as mock_run_scenario, \
+         patch("video.recorder.VideoRecorder") as mock_video_recorder_cls, \
+         patch("video.recorder.upload_replay", return_value="s3://video-bucket/s1/run/replay.mp4") as mock_upload:
         mock_video_recorder_cls.return_value = MagicMock()
 
         response = handler_module.handler(
@@ -182,10 +182,10 @@ def test_handler_given_scenario_run_error_should_write_failed_result_and_return_
 
     fake_scenario = MagicMock(robot_model="unitree_g1")
 
-    with patch("handler.load_scenario", return_value=fake_scenario), \
-         patch("handler.get_robot_model", return_value="/tmp/model.mjcf"), \
-         patch("handler.load_controller", return_value=MagicMock()), \
-         patch("handler.run_scenario", side_effect=ScenarioRunError("boom")):
+    with patch("scenario.loader.load_scenario", return_value=fake_scenario), \
+         patch("robot_model.loader.get_robot_model", return_value="/tmp/model.mjcf"), \
+         patch("control.factory.load_controller", return_value=MagicMock()), \
+         patch("harness.runner.run_scenario", side_effect=ScenarioRunError("boom")):
         response = handler_module.handler(
             _post_event({"scenario_id": "s1", "version": 1}), None
         )
@@ -545,12 +545,12 @@ def test_handler_given_stream_event_should_run_simulation_and_set_status_complet
         failures=[], violations=[], metrics=[], video_frames=[],
     )
 
-    with patch("handler.load_scenario", return_value=fake_scenario), \
-         patch("handler.get_robot_model", return_value="/tmp/model.mjcf"), \
-         patch("handler.load_controller", return_value=MagicMock()), \
-         patch("handler.run_scenario", return_value=fake_result), \
-         patch("handler.VideoRecorder") as mock_recorder, \
-         patch("handler.upload_replay", return_value="s3://bucket/replay.mp4"):
+    with patch("scenario.loader.load_scenario", return_value=fake_scenario), \
+         patch("robot_model.loader.get_robot_model", return_value="/tmp/model.mjcf"), \
+         patch("control.factory.load_controller", return_value=MagicMock()), \
+         patch("harness.runner.run_scenario", return_value=fake_result), \
+         patch("video.recorder.VideoRecorder") as mock_recorder, \
+         patch("video.recorder.upload_replay", return_value="s3://bucket/replay.mp4"):
         mock_recorder.return_value = MagicMock()
 
         response = handler_module.handler(_stream_event("s1", 1), None)

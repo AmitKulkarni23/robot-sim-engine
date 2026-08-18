@@ -13,14 +13,6 @@ from typing import Any
 
 import boto3
 
-from control.factory import load_controller
-from harness.models import ScenarioRunError
-from harness.runner import run_scenario
-from robot_model.loader import get_robot_model
-from scenario.loader import load_scenario
-from scenario.models import ScenarioValidationError
-from video.recorder import VideoRecorder, upload_replay
-
 logger = logging.getLogger(__name__)
 
 WEBHOOK_SECRET_PARAM_NAME_ENV = "WEBHOOK_SECRET_PARAM_NAME_ENV"
@@ -208,6 +200,9 @@ def _handle_create_scenario(event: dict, dynamodb_client) -> dict:
     if not yaml_content:
         return _response(400, {"error": "yaml_content is required"})
 
+    from scenario.loader import load_scenario
+    from scenario.models import ScenarioValidationError
+
     try:
         scenario = load_scenario(yaml_content)
     except ScenarioValidationError as exc:
@@ -291,6 +286,13 @@ def _handle_simulate(event: dict, dynamodb_client) -> dict:
     ).get("Item")
     if item is None:
         return _response(404, {"error": "Scenario not found"})
+
+    from control.factory import load_controller
+    from harness.models import ScenarioRunError
+    from harness.runner import run_scenario
+    from robot_model.loader import get_robot_model
+    from scenario.loader import load_scenario
+    from video.recorder import VideoRecorder, upload_replay
 
     yaml_content = item["yaml_content"]["S"]
     scenario_name = item.get("name", {}).get("S", scenario_id)
