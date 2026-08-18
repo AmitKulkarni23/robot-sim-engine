@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-import numpy as np
+from telemetry.models import TelemetryBundle
 
 
 class ScenarioRunError(Exception):
@@ -36,4 +36,4 @@ class RunResult:
     failures: list[str] = field(default_factory=list)
     violations: list[StructuredViolation] = field(default_factory=list)
     metrics: list[MetricValue] = field(default_factory=list)
-    video_frames: list[np.ndarray] = field(default_factory=list)
+    telemetry: TelemetryBundle = field(default_factory=TelemetryBundle)

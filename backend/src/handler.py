@@ -292,7 +292,7 @@ def _handle_simulate(event: dict, dynamodb_client) -> dict:
     from harness.runner import run_scenario
     from robot_model.loader import get_robot_model
     from scenario.loader import load_scenario
-    from video.recorder import VideoRecorder, upload_replay
+    from telemetry.recorder import upload_telemetry
 
     yaml_content = item["yaml_content"]["S"]
     scenario_name = item.get("name", {}).get("S", scenario_id)
@@ -307,12 +307,7 @@ def _handle_simulate(event: dict, dynamodb_client) -> dict:
     try:
         result = run_scenario(scenario, controller, model_path)
 
-        recorder = VideoRecorder()
-        for frame in result.video_frames:
-            recorder.add_frame(frame)
-        local_video_path = f"/tmp/{run_id}.mp4"
-        recorder.encode(local_video_path)
-        video_uri = upload_replay(local_video_path, scenario_id, run_id)
+        telemetry_uri = upload_telemetry(result.telemetry, scenario_id, run_id)
 
         success = result.success
         duration_s = result.duration_s
@@ -327,7 +322,7 @@ def _handle_simulate(event: dict, dynamodb_client) -> dict:
         failures = [str(exc)]
         violations = []
         metrics = []
-        video_uri = ""
+        telemetry_uri = ""
 
     results_table = os.environ[RESULTS_TABLE_NAME_ENV]
     dynamodb_client.put_item(
@@ -345,7 +340,7 @@ def _handle_simulate(event: dict, dynamodb_client) -> dict:
             "failures": {"S": json.dumps(failures)},
             "violations": {"S": json.dumps(violations)},
             "metrics": {"S": json.dumps(metrics)},
-            "videoUri": {"S": video_uri},
+            "telemetryUri": {"S": telemetry_uri},
         },
     )
 

@@ -135,17 +135,14 @@ def test_handler_given_valid_request_should_run_scenario_and_write_result_record
     fake_scenario = MagicMock(robot_model="unitree_g1")
     fake_result = RunResult(
         success=True, duration_s=1.0, steps_simulated=500,
-        failures=[], violations=[], metrics=[], video_frames=[],
+        failures=[], violations=[], metrics=[],
     )
 
     with patch("scenario.loader.load_scenario", return_value=fake_scenario) as mock_load_scenario, \
          patch("robot_model.loader.get_robot_model", return_value="/tmp/model.mjcf") as mock_get_model, \
          patch("control.factory.load_controller", return_value=MagicMock()), \
          patch("harness.runner.run_scenario", return_value=fake_result) as mock_run_scenario, \
-         patch("video.recorder.VideoRecorder") as mock_video_recorder_cls, \
-         patch("video.recorder.upload_replay", return_value="s3://video-bucket/s1/run/replay.mp4") as mock_upload:
-        mock_video_recorder_cls.return_value = MagicMock()
-
+         patch("telemetry.recorder.upload_telemetry", return_value="s3://video-bucket/s1/run/telemetry.json") as mock_upload:
         response = handler_module.handler(
             _post_event({"scenario_id": "s1", "version": 1}), None
         )
@@ -232,7 +229,7 @@ def test_handler_get_runs_should_return_results_from_dynamodb():
             "failures": {"S": "[]"},
             "violations": {"S": "[]"},
             "metrics": {"S": "[]"},
-            "videoUri": {"S": "s3://bucket/replay.mp4"},
+            "telemetryUri": {"S": "s3://bucket/replay.mp4"},
         },
     )
 
@@ -266,7 +263,7 @@ def test_handler_get_run_by_id_should_return_single_result():
             "failures": {"S": json.dumps(["timed out after 30s"])},
             "violations": {"S": "[]"},
             "metrics": {"S": "[]"},
-            "videoUri": {"S": ""},
+            "telemetryUri": {"S": ""},
         },
     )
 
@@ -542,17 +539,14 @@ def test_handler_given_stream_event_should_run_simulation_and_set_status_complet
     fake_scenario = MagicMock(robot_model="unitree_g1")
     fake_result = RunResult(
         success=True, duration_s=1.0, steps_simulated=500,
-        failures=[], violations=[], metrics=[], video_frames=[],
+        failures=[], violations=[], metrics=[],
     )
 
     with patch("scenario.loader.load_scenario", return_value=fake_scenario), \
          patch("robot_model.loader.get_robot_model", return_value="/tmp/model.mjcf"), \
          patch("control.factory.load_controller", return_value=MagicMock()), \
          patch("harness.runner.run_scenario", return_value=fake_result), \
-         patch("video.recorder.VideoRecorder") as mock_recorder, \
-         patch("video.recorder.upload_replay", return_value="s3://bucket/replay.mp4"):
-        mock_recorder.return_value = MagicMock()
-
+         patch("telemetry.recorder.upload_telemetry", return_value="s3://bucket/s1/run/telemetry.json"):
         response = handler_module.handler(_stream_event("s1", 1), None)
 
     assert response["statusCode"] == 200

@@ -72,7 +72,7 @@ def test_run_scenario_should_apply_randomization_before_running(monkeypatch):
     assert calls == [scenario]
 
 
-def test_run_scenario_should_collect_video_frames_at_thirty_fps():
+def test_run_scenario_should_collect_telemetry_frames_at_thirty_hz():
     scenario = load_scenario(BASE_YAML)
     controller = StandStillController()
 
@@ -84,7 +84,11 @@ def test_run_scenario_should_collect_video_frames_at_thirty_fps():
     )
 
     expected_frames = round(result.duration_s * 30)
-    assert abs(len(result.video_frames) - expected_frames) <= 1
+    assert abs(len(result.telemetry.frames) - expected_frames) <= 1
+    frame = result.telemetry.frames[0]
+    assert isinstance(frame.joint_angles, dict)
+    assert isinstance(frame.center_of_mass, tuple)
+    assert len(frame.center_of_mass) == 3
 
 
 def test_run_scenario_given_robot_falls_over_should_record_violation_and_fail():

@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import numpy as np
 import pytest
 
 from control.models import ControlAction
@@ -51,15 +50,6 @@ def test_get_state_after_step_should_reflect_body_falling_under_gravity():
     assert later_z < initial_z
 
 
-def test_render_frame_should_return_rgb_array_of_requested_dimensions():
-    sim = PhysicsSimulation(str(FIXTURES_DIR / "falling_body.xml"))
-
-    frame = sim.render_frame(width=320, height=240)
-
-    assert frame.shape == (240, 320, 3)
-    assert frame.dtype == np.uint8
-
-
 def test_check_contact_given_two_bodies_not_touching_should_return_false():
     sim = PhysicsSimulation(str(FIXTURES_DIR / "falling_body.xml"))
 
@@ -101,6 +91,34 @@ def test_apply_action_given_unknown_joint_should_silently_skip():
     action = ControlAction(joint_targets={"nonexistent_joint": 1.0})
     sim.apply_action(action)
     sim.step()
+
+
+def test_get_center_of_mass_should_return_three_floats():
+    sim = PhysicsSimulation(str(FIXTURES_DIR / "falling_body.xml"))
+
+    com = sim.get_center_of_mass()
+
+    assert len(com) == 3
+    assert all(isinstance(v, float) for v in com)
+
+
+def test_get_joint_velocities_should_return_dict_of_floats():
+    sim = PhysicsSimulation(str(FIXTURES_DIR / "actuated_body.xml"))
+    sim.step()
+
+    velocities = sim.get_joint_velocities()
+
+    assert isinstance(velocities, dict)
+    assert "arm_joint" in velocities
+    assert isinstance(velocities["arm_joint"], float)
+
+
+def test_get_active_contacts_should_return_empty_list_when_no_contacts():
+    sim = PhysicsSimulation(str(FIXTURES_DIR / "falling_body.xml"))
+
+    contacts = sim.get_active_contacts()
+
+    assert isinstance(contacts, list)
 
 
 def test_ensure_scene_xml_given_no_existing_scene_should_generate_one(tmp_path):

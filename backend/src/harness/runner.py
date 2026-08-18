@@ -1,11 +1,4 @@
-"""Orchestrates one full simulation run: physics + control + assertions.
-
-Task-completion detection is intentionally minimal for this iteration: a
-scenario is considered "complete" only once `max_duration_s` of simulated
-time elapses -- there is no interim, per-task-type success detection. A
-richer assertion DSL is a known future extension and is deliberately out
-of scope here (see task-009's Technical Notes).
-"""
+"""Orchestrates one full simulation run: physics + control + telemetry + assertions."""
 from __future__ import annotations
 
 from control.base import RobotController
@@ -13,16 +6,17 @@ from physics.scene import ensure_scene_xml
 from physics.simulation import PhysicsSimulation
 from scenario.loader import apply_randomization
 from scenario.models import Scenario
+from telemetry.models import TelemetryBundle, TelemetryFrame
 
 from .models import RunResult, ScenarioRunError, StructuredViolation
 
-VIDEO_FPS = 30
+TELEMETRY_HZ = 30
 _FOOT_LINK_NAMES = {"left_foot", "right_foot", "foot"}
 _GROUND_BODY_NAME = "floor_body"
 
 
-def _should_capture_frame(sim_time: float, last_capture_time: float, fps: int) -> bool:
-    return sim_time - last_capture_time >= (1.0 / fps)
+def _should_sample(sim_time: float, last_sample_time: float, hz: int) -> bool:
+    return sim_time - last_sample_time >= (1.0 / hz)
 
 
 def run_scenario(
@@ -31,11 +25,6 @@ def run_scenario(
     model_path: str,
     max_duration_s: float = 30.0,
 ) -> RunResult:
-    """Run `scenario` to completion (or timeout) and return a `RunResult`.
-
-    Raises `ScenarioRunError` -- wrapping the original exception -- if the
-    physics engine, controller, or video recorder fail unexpectedly.
-    """
     try:
         randomized_scenario = apply_randomization(scenario)
         scene_path = ensure_scene_xml(model_path)
@@ -46,11 +35,11 @@ def run_scenario(
                 placement.object_id, placement.position, placement.orientation
             )
 
-        video_frames = []
+        telemetry = TelemetryBundle(sample_rate_hz=TELEMETRY_HZ)
         violations: list[StructuredViolation] = []
         violation_titles: set[str] = set()
         failures: list[str] = []
-        last_capture_time = -1.0 / VIDEO_FPS
+        last_sample_time = -1.0 / TELEMETRY_HZ
 
         while sim.get_time() < max_duration_s:
             state = sim.get_state()
@@ -60,9 +49,16 @@ def run_scenario(
             sim.step()
             sim_time = sim.get_time()
 
-            if _should_capture_frame(sim_time, last_capture_time, VIDEO_FPS):
-                video_frames.append(sim.render_frame())
-                last_capture_time = sim_time
+            if _should_sample(sim_time, last_sample_time, TELEMETRY_HZ):
+                telemetry.frames.append(TelemetryFrame(
+                    time=round(sim_time, 4),
+                    joint_angles=dict(state.joint_angles),
+                    joint_velocities=sim.get_joint_velocities(),
+                    body_positions=dict(state.body_positions),
+                    center_of_mass=sim.get_center_of_mass(),
+                    contacts=sim.get_active_contacts(),
+                ))
+                last_sample_time = sim_time
 
             for body_name in state.body_positions:
                 if body_name in _FOOT_LINK_NAMES or body_name == _GROUND_BODY_NAME:
@@ -86,13 +82,15 @@ def run_scenario(
             failures.append(f"timed out after {max_duration_s}s")
             success = False
 
+        telemetry.total_duration_s = duration_s
+
         return RunResult(
             success=success,
             duration_s=duration_s,
             steps_simulated=steps_simulated,
             failures=failures,
             violations=violations,
-            video_frames=video_frames,
+            telemetry=telemetry,
         )
     except ScenarioRunError:
         raise

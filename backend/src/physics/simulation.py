@@ -1,16 +1,10 @@
-"""Thin wrapper around `mujoco.MjModel`/`MjData` -- the "laws of nature" layer.
-
-Assumes `MUJOCO_GL=osmesa` has already been set at the process/container
-level before `mujoco` is imported (see task 010's Dockerfile) -- this class
-never attempts to set it itself.
-"""
+"""Thin wrapper around `mujoco.MjModel`/`MjData` -- the "laws of nature" layer."""
 from __future__ import annotations
-
-import numpy as np
 
 import mujoco
 
 from control.models import ControlAction
+from telemetry.models import ContactEvent
 from .models import PhysicsModelLoadError, SimState
 
 
@@ -30,7 +24,6 @@ class PhysicsSimulation:
         self._initial_qpos = self._data.qpos.copy()
         self._initial_qvel = self._data.qvel.copy()
         self._steps_taken = 0
-        self._renderer: mujoco.Renderer | None = None
 
     @property
     def steps_taken(self) -> int:
@@ -94,17 +87,42 @@ class PhysicsSimulation:
             if actuator_id != -1:
                 self._data.ctrl[actuator_id] = target
 
-    def render_frame(self, width: int = 640, height: int = 480) -> np.ndarray:
-        """Render the current scene off-screen and return an RGB uint8 array."""
-        if (
-            self._renderer is None
-            or self._renderer.width != width
-            or self._renderer.height != height
-        ):
-            self._renderer = mujoco.Renderer(self._model, height=height, width=width)
-        self._renderer.update_scene(self._data)
-        frame = self._renderer.render()
-        return np.asarray(frame, dtype=np.uint8)
+    def get_center_of_mass(self) -> tuple[float, float, float]:
+        """Whole-body center of mass position."""
+        com = self._data.subtree_com[0]
+        return (float(com[0]), float(com[1]), float(com[2]))
+
+    def get_joint_velocities(self) -> dict[str, float]:
+        """Current angular velocity for each named joint."""
+        velocities: dict[str, float] = {}
+        for joint_id in range(self._model.njnt):
+            name = mujoco.mj_id2name(self._model, mujoco.mjtObj.mjOBJ_JOINT, joint_id)
+            if not name:
+                continue
+            dof_adr = self._model.jnt_dofadr[joint_id]
+            velocities[name] = float(self._data.qvel[dof_adr])
+        return velocities
+
+    def get_active_contacts(self) -> list[ContactEvent]:
+        """All active contact pairs this timestep."""
+        contacts: list[ContactEvent] = []
+        seen: set[tuple[str, str]] = set()
+        for i in range(self._data.ncon):
+            c = self._data.contact[i]
+            b1_id = int(self._model.geom_bodyid[c.geom1])
+            b2_id = int(self._model.geom_bodyid[c.geom2])
+            b1 = mujoco.mj_id2name(self._model, mujoco.mjtObj.mjOBJ_BODY, b1_id) or ""
+            b2 = mujoco.mj_id2name(self._model, mujoco.mjtObj.mjOBJ_BODY, b2_id) or ""
+            pair = (min(b1, b2), max(b1, b2))
+            if pair in seen:
+                continue
+            seen.add(pair)
+            contacts.append(ContactEvent(
+                body_a=b1,
+                body_b=b2,
+                position=(float(c.pos[0]), float(c.pos[1]), float(c.pos[2])),
+            ))
+        return contacts
 
     def check_contact(self, body_a: str, body_b: str) -> bool:
         """Whether two named bodies are currently in contact."""
