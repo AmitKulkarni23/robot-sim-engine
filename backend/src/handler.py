@@ -299,7 +299,7 @@ def _handle_simulate(event: dict, dynamodb_client) -> dict:
     robot_model = item.get("robotModel", {}).get("S", "")
     scenario = load_scenario(yaml_content)
     model_path = get_robot_model(scenario.robot_model, str(version))
-    controller = load_controller("stand_still")
+    controller = load_controller(scenario.task.task_type)
 
     run_id = str(uuid.uuid4())
     started_at = datetime.now(timezone.utc).isoformat()

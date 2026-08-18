@@ -1,0 +1,10 @@
+scenario_id: factory-reach-fail
+version: 1
+robot_model: unitree_g1
+task:
+  task_type: factory_reach_defective
+  description: "Robot reaches toward workstation — defective controller causes fall."
+object_placements: []
+randomization:
+  seed: null
+  position_noise_std: 0.0

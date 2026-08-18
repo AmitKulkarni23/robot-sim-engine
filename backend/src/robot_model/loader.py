@@ -30,19 +30,37 @@ def _s3_key(model_name: str, version: str) -> str:
     return f"{model_name}/{version}/model.mjcf"
 
 
+def _extract_meshdir(mjcf_content: str) -> str:
+    """Return the `meshdir` attribute from `<compiler>`, or empty string."""
+    try:
+        root = ET.fromstring(mjcf_content)
+    except ET.ParseError:
+        return ""
+    compiler = root.find("compiler")
+    if compiler is not None:
+        return compiler.get("meshdir", "")
+    return ""
+
+
 def _extract_mesh_filenames(mjcf_content: str) -> list[str]:
-    """Return the `file` attribute of every `<mesh>` tag under `<asset>`."""
+    """Return mesh file paths (with meshdir prefix) for every `<mesh>` under `<asset>`."""
     try:
         root = ET.fromstring(mjcf_content)
     except ET.ParseError:
         return []
 
-    return [
-        mesh.get("file")
-        for asset in root.findall(".//asset")
-        for mesh in asset.findall("mesh")
-        if mesh.get("file")
-    ]
+    meshdir = _extract_meshdir(mjcf_content)
+
+    paths = []
+    for asset in root.findall(".//asset"):
+        for mesh in asset.findall("mesh"):
+            filename = mesh.get("file")
+            if filename:
+                if meshdir:
+                    paths.append(f"{meshdir}/{filename}")
+                else:
+                    paths.append(filename)
+    return paths
 
 
 def _download_from_menagerie(model_name: str, local_path: Path) -> None:

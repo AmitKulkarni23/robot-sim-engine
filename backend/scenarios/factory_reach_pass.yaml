@@ -1,0 +1,10 @@
+scenario_id: factory-reach-pass
+version: 1
+robot_model: unitree_g1
+task:
+  task_type: factory_reach
+  description: "Robot reaches toward workstation on factory floor — balanced controller."
+object_placements: []
+randomization:
+  seed: null
+  position_noise_std: 0.0

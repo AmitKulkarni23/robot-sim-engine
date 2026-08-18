@@ -101,3 +101,28 @@ def test_get_robot_model_given_menagerie_fetch_should_also_download_referenced_m
     mesh_path = Path(result).parent / "torso.stl"
     assert mesh_path.exists()
     assert mesh_path.read_bytes() == b"stl-bytes"
+
+
+@responses.activate
+def test_get_robot_model_given_meshdir_attribute_should_download_meshes_to_subdirectory(
+    tmp_path, s3_bucket
+):
+    mjcf_content = (
+        '<mujoco><compiler meshdir="assets"/>'
+        '<asset><mesh name="pelvis" file="pelvis.STL"/></asset></mujoco>'
+    )
+    responses.add(responses.GET, MJCF_URL, body=mjcf_content, status=200)
+    responses.add(
+        responses.GET,
+        "https://raw.githubusercontent.com/google-deepmind/mujoco_menagerie/main"
+        "/unitree_g1/assets/pelvis.STL",
+        body=b"stl-pelvis-bytes",
+        status=200,
+    )
+    cache_dir = tmp_path / "cache"
+
+    result = get_robot_model("unitree_g1", "1", cache_dir=str(cache_dir))
+
+    mesh_path = Path(result).parent / "assets" / "pelvis.STL"
+    assert mesh_path.exists()
+    assert mesh_path.read_bytes() == b"stl-pelvis-bytes"

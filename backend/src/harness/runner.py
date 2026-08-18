@@ -9,6 +9,7 @@ of scope here (see task-009's Technical Notes).
 from __future__ import annotations
 
 from control.base import RobotController
+from physics.scene import ensure_scene_xml
 from physics.simulation import PhysicsSimulation
 from scenario.loader import apply_randomization
 from scenario.models import Scenario
@@ -37,7 +38,8 @@ def run_scenario(
     """
     try:
         randomized_scenario = apply_randomization(scenario)
-        sim = PhysicsSimulation(model_path)
+        scene_path = ensure_scene_xml(model_path)
+        sim = PhysicsSimulation(scene_path)
 
         for placement in randomized_scenario.object_placements:
             sim.set_body_position(
@@ -52,7 +54,8 @@ def run_scenario(
 
         while sim.get_time() < max_duration_s:
             state = sim.get_state()
-            controller.compute_action(state, sim.get_time())
+            action = controller.compute_action(state, sim.get_time())
+            sim.apply_action(action)
 
             sim.step()
             sim_time = sim.get_time()

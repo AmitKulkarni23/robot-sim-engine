@@ -3,7 +3,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from control.models import ControlAction
 from physics.models import PhysicsModelLoadError
+from physics.scene import ensure_scene_xml
 from physics.simulation import PhysicsSimulation
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
@@ -77,3 +79,53 @@ def test_reset_should_restore_initial_state():
         initial_state.body_positions["free_body"]
     )
     assert sim.get_time() == pytest.approx(0.0)
+
+
+def test_apply_action_should_drive_actuated_joint_toward_target():
+    sim = PhysicsSimulation(str(FIXTURES_DIR / "actuated_body.xml"))
+    initial_angle = sim.get_state().joint_angles["arm_joint"]
+
+    action = ControlAction(joint_targets={"arm_joint": 0.5})
+    for _ in range(1000):
+        sim.apply_action(action)
+        sim.step()
+
+    final_angle = sim.get_state().joint_angles["arm_joint"]
+    assert final_angle > initial_angle
+    assert final_angle == pytest.approx(0.5, abs=0.15)
+
+
+def test_apply_action_given_unknown_joint_should_silently_skip():
+    sim = PhysicsSimulation(str(FIXTURES_DIR / "actuated_body.xml"))
+
+    action = ControlAction(joint_targets={"nonexistent_joint": 1.0})
+    sim.apply_action(action)
+    sim.step()
+
+
+def test_ensure_scene_xml_given_no_existing_scene_should_generate_one(tmp_path):
+    model_dir = tmp_path / "unitree_g1" / "1"
+    model_dir.mkdir(parents=True)
+    model_file = model_dir / "model.mjcf"
+    model_file.write_text("<mujoco/>")
+
+    scene_path = ensure_scene_xml(str(model_file))
+
+    assert Path(scene_path).exists()
+    assert Path(scene_path).name == "model.scene.xml"
+    content = Path(scene_path).read_text()
+    assert 'include file="model.mjcf"' in content
+    assert "groundplane" in content
+
+
+def test_ensure_scene_xml_given_existing_scene_should_return_it(tmp_path):
+    model_dir = tmp_path / "unitree_g1" / "1"
+    model_dir.mkdir(parents=True)
+    model_file = model_dir / "model.mjcf"
+    model_file.write_text("<mujoco/>")
+    scene_file = model_dir / "scene.xml"
+    scene_file.write_text("<mujoco>custom</mujoco>")
+
+    scene_path = ensure_scene_xml(str(model_file))
+
+    assert Path(scene_path).read_text() == "<mujoco>custom</mujoco>"

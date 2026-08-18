@@ -2,11 +2,15 @@
 from __future__ import annotations
 
 from .base import RobotController
+from .factory_reach import FactoryReachController
+from .factory_reach_defective import FactoryReachDefectiveController
 from .models import UnknownControllerError
 from .stand_still import StandStillController
 
 _REGISTRY: dict[str, type[RobotController]] = {
     "stand_still": StandStillController,
+    "factory_reach": FactoryReachController,
+    "factory_reach_defective": FactoryReachDefectiveController,
 }
 
 

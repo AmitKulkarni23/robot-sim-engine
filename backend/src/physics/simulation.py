@@ -10,6 +10,7 @@ import numpy as np
 
 import mujoco
 
+from control.models import ControlAction
 from .models import PhysicsModelLoadError, SimState
 
 
@@ -83,6 +84,15 @@ class PhysicsSimulation:
             body_orientations=body_orientations,
             joint_angles=joint_angles,
         )
+
+    def apply_action(self, action: ControlAction) -> None:
+        """Set actuator control targets from a ControlAction's joint_targets."""
+        for joint_name, target in action.joint_targets.items():
+            actuator_id = mujoco.mj_name2id(
+                self._model, mujoco.mjtObj.mjOBJ_ACTUATOR, joint_name
+            )
+            if actuator_id != -1:
+                self._data.ctrl[actuator_id] = target
 
     def render_frame(self, width: int = 640, height: int = 480) -> np.ndarray:
         """Render the current scene off-screen and return an RGB uint8 array."""
