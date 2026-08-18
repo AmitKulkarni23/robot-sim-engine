@@ -23,7 +23,7 @@ const computeStack = new RobotSimComputeStack(app, 'RobotSimComputeStack', {
   environment,
   scenariosTable: dataStack.scenariosTable,
   resultsTable: dataStack.resultsTable,
-  videoReplaysBucket: dataStack.videoReplaysBucket,
+  telemetryBucket: dataStack.telemetryBucket,
   robotModelsBucket: dataStack.robotModelsBucket,
   sitePacksBucket: dataStack.sitePacksBucket,
 });

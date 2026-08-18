@@ -14,14 +14,14 @@ export interface RobotSimDataStackProps extends cdk.StackProps {
  * Owns:
  *  - Scenarios table (versioned scenario definitions)
  *  - SimulationResults table (per-run verdicts/metrics, streamed)
- *  - video-replays bucket   — MP4 output, key prefix {scenarioId}/{runId}/replay.mp4
+ *  - telemetry bucket       — JSON telemetry output, key prefix {scenarioId}/{runId}/telemetry.json
  *  - robot-models bucket    — cached Menagerie assets, key prefix {modelName}/{version}/model.mjcf
  *  - site-packs bucket      — customer-specific bundles, key prefix {customerId}/{packVersion}/
  */
 export class RobotSimDataStack extends cdk.Stack {
   public readonly scenariosTable: dynamodb.Table;
   public readonly resultsTable: dynamodb.Table;
-  public readonly videoReplaysBucket: s3.Bucket;
+  public readonly telemetryBucket: s3.Bucket;
   public readonly robotModelsBucket: s3.Bucket;
   public readonly sitePacksBucket: s3.Bucket;
 
@@ -67,9 +67,9 @@ export class RobotSimDataStack extends cdk.Stack {
       sortKey: { name: 'startedAt', type: dynamodb.AttributeType.STRING },
     });
 
-    // --- video-replays bucket ---
-    // Key prefix convention: {scenarioId}/{runId}/replay.mp4
-    this.videoReplaysBucket = new s3.Bucket(this, 'RobotSimVideoReplaysBucket', {
+    // --- telemetry bucket ---
+    // Key prefix convention: {scenarioId}/{runId}/telemetry.json
+    this.telemetryBucket = new s3.Bucket(this, 'RobotSimVideoReplaysBucket', {
       bucketName: `robot-sim-video-replays-${this.account}-${this.region}`,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       lifecycleRules: [
@@ -137,11 +137,11 @@ export class RobotSimDataStack extends cdk.Stack {
     });
 
     new cdk.CfnOutput(this, 'RobotSimVideoReplaysBucketNameOutput', {
-      value: this.videoReplaysBucket.bucketName,
+      value: this.telemetryBucket.bucketName,
       exportName: 'RobotSimVideoReplaysBucketName',
     });
     new cdk.CfnOutput(this, 'RobotSimVideoReplaysBucketArnOutput', {
-      value: this.videoReplaysBucket.bucketArn,
+      value: this.telemetryBucket.bucketArn,
       exportName: 'RobotSimVideoReplaysBucketArn',
     });
 

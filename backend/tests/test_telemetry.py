@@ -47,7 +47,7 @@ def test_telemetry_bundle_to_dict_given_empty_frames_should_return_zero_count():
 
 
 def test_upload_telemetry_should_put_json_to_s3(monkeypatch):
-    monkeypatch.setenv("VIDEO_BUCKET_NAME_ENV", "test-bucket")
+    monkeypatch.setenv("TELEMETRY_BUCKET_NAME_ENV", "test-bucket")
     mock_client = MagicMock()
 
     with patch("telemetry.recorder.boto3") as mock_boto3:

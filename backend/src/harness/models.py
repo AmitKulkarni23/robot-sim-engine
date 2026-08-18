@@ -8,7 +8,7 @@ from telemetry.models import TelemetryBundle
 
 class ScenarioRunError(Exception):
     """Wraps unexpected failures from the physics engine, controller, or
-    video recorder during a run -- distinct from a `RunResult` with
+    telemetry recorder during a run -- distinct from a `RunResult` with
     `success=False`, which means the run completed but the robot failed
     the task."""
 

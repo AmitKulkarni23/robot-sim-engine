@@ -19,7 +19,7 @@ def _env(monkeypatch):
     monkeypatch.setenv("WEBHOOK_SECRET_PARAM_NAME_ENV", "/robot-sim/webhook-secret")
     monkeypatch.setenv("SCENARIOS_TABLE_NAME_ENV", SCENARIOS_TABLE)
     monkeypatch.setenv("RESULTS_TABLE_NAME_ENV", RESULTS_TABLE)
-    monkeypatch.setenv("VIDEO_BUCKET_NAME_ENV", "video-bucket")
+    monkeypatch.setenv("TELEMETRY_BUCKET_NAME_ENV", "telemetry-bucket")
     monkeypatch.setenv("MODELS_BUCKET_NAME_ENV", "models-bucket")
     handler_module._cached_webhook_secret = SECRET
     yield
@@ -130,7 +130,7 @@ def test_handler_given_valid_request_should_run_scenario_and_write_result_record
     )
 
     s3 = boto3.client("s3", region_name="us-east-1")
-    s3.create_bucket(Bucket="video-bucket")
+    s3.create_bucket(Bucket="telemetry-bucket")
 
     fake_scenario = MagicMock(robot_model="unitree_g1")
     fake_result = RunResult(
@@ -142,7 +142,7 @@ def test_handler_given_valid_request_should_run_scenario_and_write_result_record
          patch("robot_model.loader.get_robot_model", return_value="/tmp/model.mjcf") as mock_get_model, \
          patch("control.factory.load_controller", return_value=MagicMock()), \
          patch("harness.runner.run_scenario", return_value=fake_result) as mock_run_scenario, \
-         patch("telemetry.recorder.upload_telemetry", return_value="s3://video-bucket/s1/run/telemetry.json") as mock_upload:
+         patch("telemetry.recorder.upload_telemetry", return_value="s3://telemetry-bucket/s1/run/telemetry.json") as mock_upload:
         response = handler_module.handler(
             _post_event({"scenario_id": "s1", "version": 1}), None
         )
@@ -534,7 +534,7 @@ def test_handler_given_stream_event_should_run_simulation_and_set_status_complet
     )
 
     s3 = boto3.client("s3", region_name="us-east-1")
-    s3.create_bucket(Bucket="video-bucket")
+    s3.create_bucket(Bucket="telemetry-bucket")
 
     fake_scenario = MagicMock(robot_model="unitree_g1")
     fake_result = RunResult(

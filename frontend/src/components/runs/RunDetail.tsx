@@ -7,13 +7,11 @@ import CommitIcon from '@mui/icons-material/Commit';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import BarChartIcon from '@mui/icons-material/BarChart';
-import MovieIcon from '@mui/icons-material/Movie';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { useTheme } from '@mui/material/styles';
 import VerdictBadge from './VerdictBadge';
 import VerdictCard from './VerdictCard';
 import MetricsDiffTable from './MetricsDiffTable';
-import VideoPlaceholder from './VideoPlaceholder';
 import ViolationsList from './ViolationsList';
 import type { Run } from '@/types/run';
 import { formatRelativeTime, formatBuildNumber } from '@/utils/format';
@@ -85,19 +83,6 @@ const RunDetail: React.FC<RunDetailProps> = ({ run }) => {
           Metrics vs Previous Run
         </SectionHeader>
         <MetricsDiffTable metrics={run.metrics} />
-      </Box>
-
-      <Box sx={{ mb: 3 }}>
-        <SectionHeader icon={<MovieIcon sx={{ fontSize: 16, color: theme.palette.text.disabled }} />}>
-          Video Replay
-        </SectionHeader>
-        <VideoPlaceholder
-          caption={
-            run.failureAt
-              ? `Simulation replay — ${run.scenarioName} at t=0s to failure at ${run.failureAt}`
-              : `Simulation replay — ${run.scenarioName}`
-          }
-        />
       </Box>
 
       <Box sx={{ mb: 3 }}>

@@ -8,7 +8,7 @@ import boto3
 
 from .models import TelemetryBundle
 
-TELEMETRY_BUCKET_NAME_ENV = "VIDEO_BUCKET_NAME_ENV"
+TELEMETRY_BUCKET_NAME_ENV = "TELEMETRY_BUCKET_NAME_ENV"
 
 
 def upload_telemetry(bundle: TelemetryBundle, scenario_id: str, run_id: str) -> str:

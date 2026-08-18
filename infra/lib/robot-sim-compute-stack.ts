@@ -13,7 +13,7 @@ export interface RobotSimComputeStackProps extends cdk.StackProps {
   environment: string;
   scenariosTable: dynamodb.Table;
   resultsTable: dynamodb.Table;
-  videoReplaysBucket: s3.Bucket;
+  telemetryBucket: s3.Bucket;
   robotModelsBucket: s3.Bucket;
   sitePacksBucket: s3.Bucket;
 }
@@ -43,7 +43,7 @@ export class RobotSimComputeStack extends cdk.Stack {
       environment: {
         SCENARIOS_TABLE_NAME_ENV: props.scenariosTable.tableName,
         RESULTS_TABLE_NAME_ENV: props.resultsTable.tableName,
-        VIDEO_BUCKET_NAME_ENV: props.videoReplaysBucket.bucketName,
+        TELEMETRY_BUCKET_NAME_ENV: props.telemetryBucket.bucketName,
         MODELS_BUCKET_NAME_ENV: props.robotModelsBucket.bucketName,
         SITE_PACKS_BUCKET_NAME_ENV: props.sitePacksBucket.bucketName,
         WEBHOOK_SECRET_PARAM_NAME_ENV: '/robot-sim/webhook-secret',
@@ -55,8 +55,8 @@ export class RobotSimComputeStack extends cdk.Stack {
     // Minimal IAM grants
     props.scenariosTable.grantReadWriteData(this.simulatorFunction);
     props.resultsTable.grantReadWriteData(this.simulatorFunction);
-    props.videoReplaysBucket.grantReadWrite(this.simulatorFunction);
-    props.robotModelsBucket.grantRead(this.simulatorFunction);
+    props.telemetryBucket.grantReadWrite(this.simulatorFunction);
+    props.robotModelsBucket.grantReadWrite(this.simulatorFunction);
     props.sitePacksBucket.grantRead(this.simulatorFunction);
     webhookSecretParam.grantRead(this.simulatorFunction);
 
