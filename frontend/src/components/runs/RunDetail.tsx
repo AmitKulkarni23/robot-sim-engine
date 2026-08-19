@@ -8,11 +8,13 @@ import Inventory2Icon from '@mui/icons-material/Inventory2';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import TimelineIcon from '@mui/icons-material/Timeline';
 import { useTheme } from '@mui/material/styles';
 import VerdictBadge from './VerdictBadge';
 import VerdictCard from './VerdictCard';
 import MetricsDiffTable from './MetricsDiffTable';
 import ViolationsList from './ViolationsList';
+import TelemetryCharts from './TelemetryCharts';
 import type { Run } from '@/types/run';
 import { formatRelativeTime, formatBuildNumber } from '@/utils/format';
 import { fontFamilyMono } from '@/config/theme';
@@ -90,6 +92,13 @@ const RunDetail: React.FC<RunDetailProps> = ({ run }) => {
           {`Violations (${run.violations.length})`}
         </SectionHeader>
         <ViolationsList violations={run.violations} />
+      </Box>
+
+      <Box sx={{ mb: 3 }}>
+        <SectionHeader icon={<TimelineIcon sx={{ fontSize: 16, color: theme.palette.text.disabled }} />}>
+          Telemetry
+        </SectionHeader>
+        <TelemetryCharts runId={run.id} />
       </Box>
     </Box>
   );

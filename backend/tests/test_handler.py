@@ -492,6 +492,80 @@ def test_post_scenario_run_given_missing_scenario_should_return_404():
     assert response["statusCode"] == 404
 
 
+@mock_aws
+def test_get_telemetry_given_valid_run_with_telemetry_should_return_s3_content():
+    client = boto3.client("dynamodb", region_name="us-east-1")
+    _create_tables(client)
+
+    s3 = boto3.client("s3", region_name="us-east-1")
+    s3.create_bucket(Bucket="telemetry-bucket")
+    telemetry_json = json.dumps({"sample_rate_hz": 30, "frames": [{"t": 0.0}]})
+    s3.put_object(Bucket="telemetry-bucket", Key="s1/run-99/telemetry.json", Body=telemetry_json)
+
+    client.put_item(
+        TableName=RESULTS_TABLE,
+        Item={
+            "runId": {"S": "run-99"},
+            "scenarioId": {"S": "s1"},
+            "scenarioName": {"S": "Test"},
+            "robotModel": {"S": "unitree-g1"},
+            "startedAt": {"S": "2026-08-18T00:00:00Z"},
+            "success": {"BOOL": True},
+            "durationS": {"N": "1.0"},
+            "stepsSimulated": {"N": "500"},
+            "buildNumber": {"N": "1"},
+            "failures": {"S": "[]"},
+            "violations": {"S": "[]"},
+            "metrics": {"S": "[]"},
+            "telemetryUri": {"S": "s3://telemetry-bucket/s1/run-99/telemetry.json"},
+        },
+    )
+
+    response = handler_module.handler(_get_event("/runs/run-99/telemetry"), None)
+
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert body["sample_rate_hz"] == 30
+
+
+@mock_aws
+def test_get_telemetry_given_run_without_telemetry_should_return_404():
+    client = boto3.client("dynamodb", region_name="us-east-1")
+    _create_tables(client)
+    client.put_item(
+        TableName=RESULTS_TABLE,
+        Item={
+            "runId": {"S": "run-no-tel"},
+            "scenarioId": {"S": "s1"},
+            "scenarioName": {"S": "Test"},
+            "robotModel": {"S": "unitree-g1"},
+            "startedAt": {"S": "2026-08-18T00:00:00Z"},
+            "success": {"BOOL": False},
+            "durationS": {"N": "0"},
+            "stepsSimulated": {"N": "0"},
+            "buildNumber": {"N": "1"},
+            "failures": {"S": "[]"},
+            "violations": {"S": "[]"},
+            "metrics": {"S": "[]"},
+            "telemetryUri": {"S": ""},
+        },
+    )
+
+    response = handler_module.handler(_get_event("/runs/run-no-tel/telemetry"), None)
+
+    assert response["statusCode"] == 404
+
+
+@mock_aws
+def test_get_telemetry_given_missing_run_should_return_404():
+    client = boto3.client("dynamodb", region_name="us-east-1")
+    _create_tables(client)
+
+    response = handler_module.handler(_get_event("/runs/nonexistent/telemetry"), None)
+
+    assert response["statusCode"] == 404
+
+
 def _stream_event(scenario_id, version, new_status="queued", old_status="draft"):
     return {
         "Records": [

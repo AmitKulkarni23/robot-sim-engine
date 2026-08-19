@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 WEBHOOK_SECRET_PARAM_NAME_ENV = "WEBHOOK_SECRET_PARAM_NAME_ENV"
 SCENARIOS_TABLE_NAME_ENV = "SCENARIOS_TABLE_NAME_ENV"
 RESULTS_TABLE_NAME_ENV = "RESULTS_TABLE_NAME_ENV"
+TELEMETRY_BUCKET_NAME_ENV = "TELEMETRY_BUCKET_NAME_ENV"
 
 _cached_webhook_secret: str | None = None
 
@@ -347,6 +348,30 @@ def _handle_simulate(event: dict, dynamodb_client) -> dict:
     return _response(200, {"run_id": run_id, "success": success})
 
 
+def _handle_get_telemetry(dynamodb_client, run_id: str) -> dict:
+    results_table = os.environ[RESULTS_TABLE_NAME_ENV]
+    resp = dynamodb_client.get_item(
+        TableName=results_table,
+        Key={"runId": {"S": run_id}},
+    )
+    item = resp.get("Item")
+    if not item:
+        return _response(404, {"error": "Run not found"})
+
+    telemetry_uri = item.get("telemetryUri", {}).get("S", "")
+    if not telemetry_uri:
+        return _response(404, {"error": "No telemetry for this run"})
+
+    parts = telemetry_uri.replace("s3://", "").split("/", 1)
+    bucket_name = parts[0]
+    key = parts[1]
+
+    s3_client = boto3.client("s3")
+    s3_resp = s3_client.get_object(Bucket=bucket_name, Key=key)
+    body = s3_resp["Body"].read().decode("utf-8")
+    return _response(200, body)
+
+
 def _check_auth(event: dict) -> dict | None:
     headers = event.get("headers") or {}
     provided_secret = headers.get("x-webhook-secret")
@@ -412,6 +437,9 @@ def handler(event: dict, context) -> dict:
         if method == "GET":
             if path == "/runs":
                 return _handle_get_runs(dynamodb_client)
+            if path.startswith("/runs/") and path.endswith("/telemetry"):
+                run_id = path.removeprefix("/runs/").removesuffix("/telemetry")
+                return _handle_get_telemetry(dynamodb_client, run_id)
             if path.startswith("/runs/"):
                 run_id = path.split("/runs/", 1)[1]
                 return _handle_get_run(dynamodb_client, run_id)

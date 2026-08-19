@@ -8,6 +8,7 @@ import ListAltIcon from '@mui/icons-material/ListAlt';
 import CategoryIcon from '@mui/icons-material/Category';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import GridOnIcon from '@mui/icons-material/GridOn';
+import DifferenceIcon from '@mui/icons-material/Difference';
 import { fontFamilyMono } from '@/config/theme';
 
 const NAV_ITEMS = [
@@ -15,6 +16,7 @@ const NAV_ITEMS = [
   { to: '/scenarios', label: 'Scenarios', icon: CategoryIcon },
   { to: '/floor', label: 'Factory Floor', icon: GridOnIcon },
   { to: '/compare', label: 'Compare', icon: CompareArrowsIcon },
+  { to: '/code-diff', label: 'Code Diff', icon: DifferenceIcon },
 ];
 
 const Sidebar: React.FC = () => {
