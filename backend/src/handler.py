@@ -88,6 +88,7 @@ def _handle_get_runs(dynamodb_client) -> dict:
             "keyMetricDeltaDirection": "neutral",
             "metrics": json.loads(item.get("metrics", {}).get("S", "[]")),
             "violations": violations_raw if violations_raw and isinstance(violations_raw[0], dict) else [],
+            "hasTelemetry": bool(item.get("telemetryUri", {}).get("S", "")),
         }
         runs.append(run)
 
@@ -136,6 +137,7 @@ def _handle_get_run(dynamodb_client, run_id: str) -> dict:
         "keyMetricDeltaDirection": "neutral",
         "metrics": json.loads(item.get("metrics", {}).get("S", "[]")),
         "violations": violations_raw if violations_raw and isinstance(violations_raw[0], dict) else [],
+        "hasTelemetry": bool(item.get("telemetryUri", {}).get("S", "")),
     }
     return _response(200, run)
 
@@ -307,8 +309,11 @@ def _handle_simulate(event: dict, dynamodb_client) -> dict:
 
     try:
         result = run_scenario(scenario, controller, model_path)
+        logger.info("Simulation completed for %s: success=%s, frames=%d",
+                     run_id, result.success, len(result.telemetry.frames))
 
         telemetry_uri = upload_telemetry(result.telemetry, scenario_id, run_id)
+        logger.info("Telemetry uploaded for %s: %s", run_id, telemetry_uri)
 
         success = result.success
         duration_s = result.duration_s
@@ -360,16 +365,25 @@ def _handle_get_telemetry(dynamodb_client, run_id: str) -> dict:
 
     telemetry_uri = item.get("telemetryUri", {}).get("S", "")
     if not telemetry_uri:
+        logger.warning("Run %s has no telemetryUri in DynamoDB", run_id)
         return _response(404, {"error": "No telemetry for this run"})
 
     parts = telemetry_uri.replace("s3://", "").split("/", 1)
+    if len(parts) < 2:
+        logger.error("Malformed telemetryUri for run %s: %s", run_id, telemetry_uri)
+        return _response(500, {"error": "Malformed telemetry URI"})
+
     bucket_name = parts[0]
     key = parts[1]
 
-    s3_client = boto3.client("s3")
-    s3_resp = s3_client.get_object(Bucket=bucket_name, Key=key)
-    body = s3_resp["Body"].read().decode("utf-8")
-    return _response(200, body)
+    try:
+        s3_client = boto3.client("s3")
+        s3_resp = s3_client.get_object(Bucket=bucket_name, Key=key)
+        body = s3_resp["Body"].read().decode("utf-8")
+        return _response(200, body)
+    except Exception as exc:
+        logger.error("Failed to read telemetry from S3 for run %s: %s", run_id, exc)
+        return _response(500, {"error": f"Failed to read telemetry: {exc}"})
 
 
 def _check_auth(event: dict) -> dict | None:

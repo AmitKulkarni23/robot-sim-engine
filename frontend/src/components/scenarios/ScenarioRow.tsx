@@ -3,7 +3,6 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import CircularProgress from '@mui/material/CircularProgress';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
@@ -37,7 +36,7 @@ const ScenarioRow: React.FC<ScenarioRowProps> = ({ scenario, onStatusChange }) =
 
   return (
     <Box
-      onClick={() => navigate(`/scenarios/${scenario.id}/edit`)}
+      onClick={() => !isQueued && navigate(`/scenarios/${scenario.id}/edit`)}
       sx={{
         display: 'flex',
         alignItems: 'flex-start',
@@ -45,8 +44,9 @@ const ScenarioRow: React.FC<ScenarioRowProps> = ({ scenario, onStatusChange }) =
         px: 2,
         py: 1.5,
         borderBottom: `1px solid ${theme.palette.divider}`,
-        cursor: 'pointer',
-        '&:hover': { backgroundColor: theme.palette.action.hover },
+        cursor: isQueued ? 'default' : 'pointer',
+        opacity: isQueued ? 0.6 : 1,
+        '&:hover': isQueued ? {} : { backgroundColor: theme.palette.action.hover },
       }}
     >
       <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -72,7 +72,7 @@ const ScenarioRow: React.FC<ScenarioRowProps> = ({ scenario, onStatusChange }) =
               disabled={isQueued}
               sx={{ color: isQueued ? theme.palette.text.disabled : theme.palette.primary.main }}
             >
-              {isQueued ? <CircularProgress size={18} /> : <PlayArrowIcon fontSize="small" />}
+              <PlayArrowIcon fontSize="small" />
             </IconButton>
           </span>
         </Tooltip>

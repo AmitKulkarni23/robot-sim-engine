@@ -5,7 +5,6 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import AppLayout from '@/layouts/AppLayout';
 import RunsPage from '@/pages/RunsPage';
 import ScenarioBrowserPage from '@/pages/ScenarioBrowserPage';
-import ComparePage from '@/pages/ComparePage';
 import ScenarioEditorPage from '@/pages/ScenarioEditorPage';
 import FactoryFloorPage from '@/pages/FactoryFloorPage';
 import CodeDiffPage from '@/pages/CodeDiffPage';
@@ -39,7 +38,6 @@ const App: React.FC = () => {
               <Route path="/scenarios/new" element={<ScenarioEditorPage />} />
               <Route path="/scenarios/:scenarioId/edit" element={<ScenarioEditorPage />} />
               <Route path="/floor" element={<FactoryFloorPage />} />
-              <Route path="/compare" element={<ComparePage />} />
               <Route path="/code-diff" element={<CodeDiffPage />} />
               <Route path="*" element={<Navigate to="/runs" replace />} />
             </Route>
