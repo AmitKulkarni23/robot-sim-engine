@@ -7,12 +7,27 @@ import TopBar from '@/components/layout/TopBar';
 import RunsList from '@/components/runs/RunsList';
 import RunDetail from '@/components/runs/RunDetail';
 import { useRuns } from '@/hooks/useRuns';
+import { useTour } from '@/hooks/useTour';
+import { TOUR_IDS, sidebarTourSteps, runsTourSteps } from '@/tours';
 
 const RunsPage: React.FC = () => {
   const { data: runs, loading, error } = useRuns();
   const { runId } = useParams();
   const navigate = useNavigate();
   const [selectedRunId, setSelectedRunId] = useState<string | null>(runId ?? null);
+
+  const sidebarTour = useTour({
+    tourId: TOUR_IDS.SIDEBAR,
+    steps: sidebarTourSteps,
+    autoStart: !loading,
+    autoStartDelay: 600,
+  });
+  const pageTour = useTour({
+    tourId: TOUR_IDS.RUNS,
+    steps: runsTourSteps,
+    autoStart: !loading && sidebarTour.isCompleted,
+    autoStartDelay: 800,
+  });
 
   useEffect(() => {
     if (!selectedRunId && runs.length > 0) {
@@ -29,7 +44,11 @@ const RunsPage: React.FC = () => {
 
   return (
     <>
-      <TopBar breadcrumb={['unitree-g1', 'factory-cell-alpha']} />
+      <TopBar breadcrumb={['unitree-g1', 'factory-cell-alpha']} onStartTour={() => {
+        sidebarTour.reset();
+        pageTour.reset();
+        sidebarTour.startTour();
+      }} />
       <Box sx={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {loading && (
           <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

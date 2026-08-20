@@ -2,16 +2,19 @@ import React from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import { useTheme } from '@mui/material/styles';
 import { useColorMode } from '@/hooks/useColorMode';
 
 type TopBarProps = {
   breadcrumb: string[];
+  onStartTour?: () => void;
 };
 
-const TopBar: React.FC<TopBarProps> = ({ breadcrumb }) => {
+const TopBar: React.FC<TopBarProps> = ({ breadcrumb, onStartTour }) => {
   const theme = useTheme();
   const { mode, toggleMode } = useColorMode();
 
@@ -42,11 +45,24 @@ const TopBar: React.FC<TopBarProps> = ({ breadcrumb }) => {
           </React.Fragment>
         ))}
       </Box>
-      <Box sx={{ ml: 'auto' }}>
+      <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        {onStartTour && (
+          <Tooltip title="Take a tour of this page">
+            <IconButton
+              size="small"
+              aria-label="Start tour"
+              onClick={onStartTour}
+              data-tour="tour-button"
+            >
+              <HelpOutlineIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        )}
         <IconButton
           size="small"
           aria-label="Toggle color mode"
           onClick={toggleMode}
+          data-tour="theme-toggle"
         >
           {mode === 'light' ? <Brightness4Icon fontSize="small" /> : <Brightness7Icon fontSize="small" />}
         </IconButton>

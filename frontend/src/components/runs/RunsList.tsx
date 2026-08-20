@@ -31,6 +31,7 @@ const RunsList: React.FC<RunsListProps> = ({ runs, selectedRunId, onSelectRun })
 
   return (
     <Box
+      data-tour="runs-list"
       sx={{
         width: 420,
         minWidth: 420,
@@ -57,7 +58,7 @@ const RunsList: React.FC<RunsListProps> = ({ runs, selectedRunId, onSelectRun })
         <Typography sx={{ fontSize: 11, color: theme.palette.text.disabled, fontFamily: 'monospace' }}>
           {filteredRuns.length} runs
         </Typography>
-        <Box sx={{ ml: 'auto' }}>
+        <Box sx={{ ml: 'auto' }} data-tour="runs-filter">
           <FilterTabs options={FILTER_OPTIONS} value={filter} onChange={setFilter} />
         </Box>
       </Box>

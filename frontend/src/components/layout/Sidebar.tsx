@@ -11,10 +11,10 @@ import DifferenceIcon from '@mui/icons-material/Difference';
 import { fontFamilyMono } from '@/config/theme';
 
 const NAV_ITEMS = [
-  { to: '/runs', label: 'Runs', icon: ListAltIcon },
-  { to: '/scenarios', label: 'Scenarios', icon: CategoryIcon },
-  { to: '/floor', label: 'Factory Floor', icon: GridOnIcon },
-  { to: '/code-diff', label: 'Code Diff', icon: DifferenceIcon },
+  { to: '/runs', label: 'Runs', icon: ListAltIcon, tourId: 'nav-runs' },
+  { to: '/scenarios', label: 'Scenarios', icon: CategoryIcon, tourId: 'nav-scenarios' },
+  { to: '/floor', label: 'Factory Floor', icon: GridOnIcon, tourId: 'nav-factory-floor' },
+  { to: '/code-diff', label: 'Code Diff', icon: DifferenceIcon, tourId: 'nav-code-diff' },
 ];
 
 const Sidebar: React.FC = () => {
@@ -23,6 +23,7 @@ const Sidebar: React.FC = () => {
   return (
     <Box
       component="aside"
+      data-tour="sidebar"
       sx={{
         width: 240,
         minWidth: 240,
@@ -63,6 +64,7 @@ const Sidebar: React.FC = () => {
             key={item.to}
             component={NavLink}
             to={item.to}
+            data-tour={item.tourId}
             sx={{
               display: 'flex',
               alignItems: 'center',

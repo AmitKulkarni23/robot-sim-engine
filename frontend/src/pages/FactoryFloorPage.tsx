@@ -3,6 +3,8 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { useTheme } from '@mui/material/styles';
 import TopBar from '@/components/layout/TopBar';
+import { useTour } from '@/hooks/useTour';
+import { TOUR_IDS, factoryFloorTourSteps } from '@/tours';
 import { fontFamilyMono } from '@/config/theme';
 
 const VIEW = { minX: -3, maxX: 10, minY: -4, maxY: 4 };
@@ -33,6 +35,12 @@ const FactoryFloorPage: React.FC = () => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
 
+  const pageTour = useTour({
+    tourId: TOUR_IDS.FACTORY_FLOOR,
+    steps: factoryFloorTourSteps,
+    autoStartDelay: 600,
+  });
+
   const gridColor = isDark ? '#2a2a3e' : '#ccc';
   const floorColor = isDark ? '#1a1a2e' : '#f5f5f0';
   const labelColor = theme.palette.text.secondary;
@@ -47,12 +55,15 @@ const FactoryFloorPage: React.FC = () => {
 
   return (
     <>
-      <TopBar breadcrumb={['unitree-g1', 'factory-floor']} />
+      <TopBar breadcrumb={['unitree-g1', 'factory-floor']} onStartTour={() => {
+        pageTour.reset();
+        pageTour.startTour();
+      }} />
       <Box sx={{ flex: 1, overflowY: 'auto', p: 3 }}>
         <Box sx={{ maxWidth: 960, mx: 'auto' }}>
           <Typography sx={{ fontSize: 18, fontWeight: 700, mb: 2 }}>Factory Floor</Typography>
 
-          <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 2, backgroundColor: 'background.paper', overflow: 'hidden' }}>
+          <Box data-tour="floor-svg" sx={{ border: 1, borderColor: 'divider', borderRadius: 2, backgroundColor: 'background.paper', overflow: 'hidden' }}>
             <style>{`
               .floor-obj:hover { opacity: 1 !important; filter: brightness(1.2); }
             `}</style>
@@ -335,7 +346,7 @@ const FactoryFloorPage: React.FC = () => {
           </Box>
 
           {/* Legend */}
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2.5, mt: 1.5, px: 1.5, py: 1, border: 1, borderColor: 'divider', borderRadius: 1.5, backgroundColor: isDark ? '#1e293b' : '#f8f9fc' }}>
+          <Box data-tour="floor-legend" sx={{ display: 'flex', flexWrap: 'wrap', gap: 2.5, mt: 1.5, px: 1.5, py: 1, border: 1, borderColor: 'divider', borderRadius: 1.5, backgroundColor: isDark ? '#1e293b' : '#f8f9fc' }}>
             <Typography sx={{ fontSize: 11, fontWeight: 700, color: 'text.secondary', mr: 0.5, lineHeight: '20px' }}>LEGEND</Typography>
             {[
               { shape: 'rect' as const, color: tableColor, label: 'Table' },

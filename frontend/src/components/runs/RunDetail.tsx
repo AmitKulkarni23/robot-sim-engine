@@ -34,7 +34,7 @@ const RunDetail: React.FC<RunDetailProps> = ({ run }) => {
   const theme = useTheme();
 
   return (
-    <Box sx={{ flex: 1, overflowY: 'auto', p: 3, minWidth: 0 }}>
+    <Box data-tour="run-detail" sx={{ flex: 1, overflowY: 'auto', p: 3, minWidth: 0 }}>
       <Box sx={{ mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
           <VerdictBadge verdict={run.verdict} size="medium" />

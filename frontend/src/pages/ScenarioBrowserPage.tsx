@@ -9,6 +9,8 @@ import TopBar from '@/components/layout/TopBar';
 import ScenarioRow from '@/components/scenarios/ScenarioRow';
 import FilterTabs from '@/components/common/FilterTabs';
 import { useScenarios } from '@/hooks/useScenarios';
+import { useTour } from '@/hooks/useTour';
+import { TOUR_IDS, scenariosTourSteps } from '@/tours';
 import type { ScenarioStatus } from '@/types/scenario';
 
 type ScenarioFilter = 'all' | ScenarioStatus;
@@ -26,6 +28,13 @@ const ScenarioBrowserPage: React.FC = () => {
   const [filter, setFilter] = useState<ScenarioFilter>('all');
   const navigate = useNavigate();
 
+  const pageTour = useTour({
+    tourId: TOUR_IDS.SCENARIOS,
+    steps: scenariosTourSteps,
+    autoStart: !loading,
+    autoStartDelay: 800,
+  });
+
   const filteredScenarios = useMemo(
     () => (filter === 'all' ? scenarios : scenarios.filter((scenario) => scenario.status === filter)),
     [scenarios, filter]
@@ -33,7 +42,10 @@ const ScenarioBrowserPage: React.FC = () => {
 
   return (
     <>
-      <TopBar breadcrumb={['unitree-g1', 'scenarios']} />
+      <TopBar breadcrumb={['unitree-g1', 'scenarios']} onStartTour={() => {
+        pageTour.reset();
+        pageTour.startTour();
+      }} />
       <Box sx={{ flex: 1, overflowY: 'auto', p: 3 }}>
         {loading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', mt: 6 }}>
@@ -45,18 +57,21 @@ const ScenarioBrowserPage: React.FC = () => {
           <Box sx={{ maxWidth: 900, mx: 'auto' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
               <Typography sx={{ fontSize: 16, fontWeight: 600 }}>Scenarios</Typography>
-              <FilterTabs options={FILTER_OPTIONS} value={filter} onChange={setFilter} />
+              <Box data-tour="scenarios-filter">
+                <FilterTabs options={FILTER_OPTIONS} value={filter} onChange={setFilter} />
+              </Box>
               <Button
                 variant="contained"
                 size="small"
                 startIcon={<AddIcon />}
                 onClick={() => navigate('/scenarios/new')}
                 sx={{ ml: 'auto', fontSize: 12 }}
+                data-tour="new-scenario-btn"
               >
                 New Scenario
               </Button>
             </Box>
-            <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1.5, backgroundColor: 'background.paper' }}>
+            <Box data-tour="scenarios-list" sx={{ border: 1, borderColor: 'divider', borderRadius: 1.5, backgroundColor: 'background.paper' }}>
               {filteredScenarios.map((scenario) => (
                 <ScenarioRow key={scenario.id} scenario={scenario} onStatusChange={refetch} />
               ))}
