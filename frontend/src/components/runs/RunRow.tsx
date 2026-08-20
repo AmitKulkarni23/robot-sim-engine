@@ -78,6 +78,30 @@ const RunRow: React.FC<RunRowProps> = ({ run, selected, onSelect }) => {
           >
             {run.scenarioName}
           </Typography>
+          {run.controllerVersion && (
+            <Typography
+              component="span"
+              sx={{
+                fontFamily: fontFamilyMono,
+                fontSize: 10.5,
+                fontWeight: 600,
+                px: 0.75,
+                py: 0.125,
+                borderRadius: '4px',
+                flexShrink: 0,
+                color:
+                  run.controllerVersion === 'v1'
+                    ? theme.palette.error.main
+                    : theme.palette.success.main,
+                backgroundColor:
+                  run.controllerVersion === 'v1'
+                    ? theme.palette.error.light
+                    : theme.palette.success.light,
+              }}
+            >
+              {run.controllerVersion}
+            </Typography>
+          )}
           <Box sx={{ ml: 'auto', flexShrink: 0 }}>
             <VerdictBadge verdict={run.verdict} />
           </Box>

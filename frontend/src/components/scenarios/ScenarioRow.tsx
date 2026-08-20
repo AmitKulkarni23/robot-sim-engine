@@ -1,90 +1,230 @@
 import React, { useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import IconButton from '@mui/material/IconButton';
-import Tooltip from '@mui/material/Tooltip';
+import Button from '@mui/material/Button';
+import Collapse from '@mui/material/Collapse';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import ScenarioStatusChip from './ScenarioStatusChip';
+import VerdictBadge from '@/components/runs/VerdictBadge';
 import { runScenario } from '@/api/scenarios';
 import type { Scenario } from '@/types/scenario';
+import type { Run } from '@/types/run';
 import { fontFamilyMono } from '@/config/theme';
+import { formatRelativeTime, formatBuildNumber } from '@/utils/format';
+
+type ControllerVersion = 'v1' | 'v2';
 
 type ScenarioRowProps = {
   scenario: Scenario;
+  runs?: Run[];
   onStatusChange?: () => void;
 };
 
-const ScenarioRow: React.FC<ScenarioRowProps> = ({ scenario, onStatusChange }) => {
+const ScenarioRow: React.FC<ScenarioRowProps> = ({ scenario, runs = [], onStatusChange }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const [running, setRunning] = useState(false);
+  const [controllerVersion, setControllerVersion] = useState<ControllerVersion>('v2');
+  const [expanded, setExpanded] = useState(false);
 
   const handleRun = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setRunning(true);
     try {
-      await runScenario(scenario.id);
+      await runScenario(scenario.id, controllerVersion);
       onStatusChange?.();
     } catch {
       setRunning(false);
     }
   };
 
+  const handleVersionChange = (_: React.MouseEvent<HTMLElement>, value: ControllerVersion | null) => {
+    if (value) setControllerVersion(value);
+  };
+
   const isQueued = scenario.status === 'queued' || running;
 
   return (
-    <Box
-      onClick={() => !isQueued && navigate(`/scenarios/${scenario.id}/edit`)}
-      sx={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: 2,
-        px: 2,
-        py: 1.5,
-        borderBottom: `1px solid ${theme.palette.divider}`,
-        cursor: isQueued ? 'default' : 'pointer',
-        opacity: isQueued ? 0.6 : 1,
-        '&:hover': isQueued ? {} : { backgroundColor: theme.palette.action.hover },
-      }}
-    >
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography sx={{ fontSize: 14, fontWeight: 600 }}>{scenario.name}</Typography>
-          <ScenarioStatusChip status={scenario.status} />
+    <Box sx={{ borderBottom: `1px solid ${theme.palette.divider}` }}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 2,
+          px: 2,
+          py: 1.5,
+        }}
+      >
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography sx={{ fontSize: 14, fontWeight: 600 }}>{scenario.name}</Typography>
+            <ScenarioStatusChip status={scenario.status} />
+          </Box>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25, fontSize: 12.5 }}>
+            {scenario.description}
+          </Typography>
+          <Typography
+            sx={{ fontFamily: fontFamilyMono, fontSize: 11, color: theme.palette.text.disabled, mt: 0.5 }}
+          >
+            {scenario.robotModel}
+          </Typography>
         </Box>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25, fontSize: 12.5 }}>
-          {scenario.description}
-        </Typography>
-        <Typography
-          sx={{ fontFamily: fontFamilyMono, fontSize: 11, color: theme.palette.text.disabled, mt: 0.5 }}
-        >
-          {scenario.robotModel}
-        </Typography>
-      </Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexShrink: 0 }}>
-        <Tooltip title={isQueued ? 'Queued' : 'Run scenario'}>
-          <span>
-            <IconButton
-              size="small"
-              onClick={handleRun}
-              disabled={isQueued}
-              sx={{ color: isQueued ? theme.palette.text.disabled : theme.palette.primary.main }}
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+          <ToggleButtonGroup
+            size="small"
+            exclusive
+            value={controllerVersion}
+            onChange={handleVersionChange}
+            onClick={(e) => e.stopPropagation()}
+            disabled={isQueued}
+          >
+            <ToggleButton
+              value="v1"
+              sx={{
+                fontSize: 11,
+                px: 1.25,
+                py: 0.375,
+                fontFamily: fontFamilyMono,
+                '&.Mui-selected': {
+                  color: theme.palette.error.main,
+                  backgroundColor: theme.palette.error.light,
+                  '&:hover': { backgroundColor: theme.palette.error.light },
+                },
+              }}
             >
-              <PlayArrowIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </Tooltip>
-        <Box sx={{ textAlign: 'right' }}>
-          <Typography sx={{ fontFamily: fontFamilyMono, fontSize: 13, fontWeight: 600 }}>
-            {Math.round(scenario.passRate * 100)}%
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {scenario.runCount} runs
-          </Typography>
+              v1 — Defective
+            </ToggleButton>
+            <ToggleButton
+              value="v2"
+              sx={{
+                fontSize: 11,
+                px: 1.25,
+                py: 0.375,
+                fontFamily: fontFamilyMono,
+                '&.Mui-selected': {
+                  color: theme.palette.success.main,
+                  backgroundColor: theme.palette.success.light,
+                  '&:hover': { backgroundColor: theme.palette.success.light },
+                },
+              }}
+            >
+              v2 — Fixed
+            </ToggleButton>
+          </ToggleButtonGroup>
+
+          <Button
+            size="small"
+            variant="contained"
+            startIcon={<PlayArrowIcon fontSize="small" />}
+            onClick={handleRun}
+            disabled={isQueued}
+            sx={{ fontSize: 12, flexShrink: 0 }}
+          >
+            {isQueued ? 'Queued' : 'Run'}
+          </Button>
         </Box>
       </Box>
+
+      <Box
+        onClick={() => setExpanded((v) => !v)}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          px: 2,
+          py: 0.75,
+          cursor: 'pointer',
+          backgroundColor: theme.palette.action.hover,
+          '&:hover': { backgroundColor: theme.palette.action.selected },
+        }}
+      >
+        <ExpandMoreIcon
+          fontSize="small"
+          sx={{
+            color: theme.palette.text.secondary,
+            transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 0.15s',
+          }}
+        />
+        <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+          {scenario.runCount} {scenario.runCount === 1 ? 'run' : 'runs'}
+        </Typography>
+        <Typography sx={{ fontFamily: fontFamilyMono, fontSize: 12, fontWeight: 600, ml: 0.5 }}>
+          {Math.round(scenario.passRate * 100)}% pass rate
+        </Typography>
+      </Box>
+
+      <Collapse in={expanded} timeout="auto" unmountOnExit>
+        <Box sx={{ backgroundColor: theme.palette.background.default }}>
+          {runs.length === 0 && (
+            <Typography sx={{ fontSize: 12, color: 'text.disabled', px: 3, py: 1.5 }}>
+              No runs yet for this scenario.
+            </Typography>
+          )}
+          {runs.map((run) => (
+            <Box
+              key={run.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/runs/${run.id}`);
+              }}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.5,
+                px: 3,
+                py: 1,
+                cursor: 'pointer',
+                borderTop: `1px solid ${theme.palette.divider}`,
+                '&:hover': { backgroundColor: theme.palette.action.hover },
+              }}
+            >
+              <Typography
+                sx={{ fontFamily: fontFamilyMono, fontSize: 11.5, color: theme.palette.primary.main, minWidth: 90 }}
+              >
+                {run.id}
+              </Typography>
+              {run.controllerVersion && (
+                <Typography
+                  sx={{
+                    fontFamily: fontFamilyMono,
+                    fontSize: 10.5,
+                    fontWeight: 600,
+                    px: 0.75,
+                    py: 0.125,
+                    borderRadius: '4px',
+                    color:
+                      run.controllerVersion === 'v1'
+                        ? theme.palette.error.main
+                        : theme.palette.success.main,
+                    backgroundColor:
+                      run.controllerVersion === 'v1'
+                        ? theme.palette.error.light
+                        : theme.palette.success.light,
+                  }}
+                >
+                  {run.controllerVersion}
+                </Typography>
+              )}
+              <VerdictBadge verdict={run.verdict} />
+              <Typography sx={{ fontSize: 11, color: 'text.secondary', ml: 'auto' }}>
+                build {formatBuildNumber(run.buildNumber)}
+              </Typography>
+              <Typography
+                sx={{ fontFamily: fontFamilyMono, fontSize: 11, color: theme.palette.text.disabled, minWidth: 70, textAlign: 'right' }}
+              >
+                {formatRelativeTime(run.timestamp)}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      </Collapse>
     </Box>
   );
 };

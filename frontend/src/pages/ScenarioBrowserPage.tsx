@@ -1,17 +1,16 @@
 import React, { useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
-import AddIcon from '@mui/icons-material/Add';
-import { useNavigate } from 'react-router-dom';
 import TopBar from '@/components/layout/TopBar';
 import ScenarioRow from '@/components/scenarios/ScenarioRow';
 import FilterTabs from '@/components/common/FilterTabs';
 import { useScenarios } from '@/hooks/useScenarios';
+import { useRuns } from '@/hooks/useRuns';
 import { useTour } from '@/hooks/useTour';
 import { TOUR_IDS, scenariosTourSteps } from '@/tours';
 import type { ScenarioStatus } from '@/types/scenario';
+import type { Run } from '@/types/run';
 
 type ScenarioFilter = 'all' | ScenarioStatus;
 
@@ -25,8 +24,8 @@ const FILTER_OPTIONS: { value: ScenarioFilter; label: string }[] = [
 
 const ScenarioBrowserPage: React.FC = () => {
   const { data: scenarios, loading, error, refetch } = useScenarios();
+  const { data: runs } = useRuns();
   const [filter, setFilter] = useState<ScenarioFilter>('all');
-  const navigate = useNavigate();
 
   const pageTour = useTour({
     tourId: TOUR_IDS.SCENARIOS,
@@ -39,6 +38,16 @@ const ScenarioBrowserPage: React.FC = () => {
     () => (filter === 'all' ? scenarios : scenarios.filter((scenario) => scenario.status === filter)),
     [scenarios, filter]
   );
+
+  const runsByScenario = useMemo(() => {
+    const map = new Map<string, Run[]>();
+    for (const run of runs) {
+      const list = map.get(run.scenarioId) ?? [];
+      list.push(run);
+      map.set(run.scenarioId, list);
+    }
+    return map;
+  }, [runs]);
 
   return (
     <>
@@ -60,20 +69,15 @@ const ScenarioBrowserPage: React.FC = () => {
               <Box data-tour="scenarios-filter">
                 <FilterTabs options={FILTER_OPTIONS} value={filter} onChange={setFilter} />
               </Box>
-              <Button
-                variant="contained"
-                size="small"
-                startIcon={<AddIcon />}
-                onClick={() => navigate('/scenarios/new')}
-                sx={{ ml: 'auto', fontSize: 12 }}
-                data-tour="new-scenario-btn"
-              >
-                New Scenario
-              </Button>
             </Box>
             <Box data-tour="scenarios-list" sx={{ border: 1, borderColor: 'divider', borderRadius: 1.5, backgroundColor: 'background.paper' }}>
               {filteredScenarios.map((scenario) => (
-                <ScenarioRow key={scenario.id} scenario={scenario} onStatusChange={refetch} />
+                <ScenarioRow
+                  key={scenario.id}
+                  scenario={scenario}
+                  runs={runsByScenario.get(scenario.id) ?? []}
+                  onStatusChange={refetch}
+                />
               ))}
               {filteredScenarios.length === 0 && (
                 <Box sx={{ p: 3 }}>

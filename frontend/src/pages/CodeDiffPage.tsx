@@ -152,7 +152,7 @@ const CodeDiffPage: React.FC = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
             <Typography sx={{ fontSize: 16, fontWeight: 600 }}>Controller Code Review</Typography>
             <Chip
-              label="factory_reach_defective.py → factory_reach.py"
+              label="v1 (Defective) → v2 (Fixed)"
               size="small"
               variant="outlined"
               sx={{ fontFamily: fontFamilyMono, fontSize: 11 }}

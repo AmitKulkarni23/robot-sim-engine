@@ -17,9 +17,13 @@ export const getScenario = async (id: string): Promise<ScenarioDetail> => {
   return response.json();
 };
 
-export const runScenario = async (id: string): Promise<{ id: string; status: string }> => {
+export const runScenario = async (
+  id: string,
+  controllerVersion: string = 'v2'
+): Promise<{ id: string; status: string }> => {
   const response = await apiFetch(`/scenarios/${encodeURIComponent(id)}/run`, {
     method: 'POST',
+    body: JSON.stringify({ controller_version: controllerVersion }),
   });
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));

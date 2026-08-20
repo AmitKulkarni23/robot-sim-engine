@@ -37,4 +37,5 @@ export interface Run {
   keyMetricDeltaDirection: DeltaDirection;
   metrics: MetricValue[];
   violations: Violation[];
+  controllerVersion?: string;
 }

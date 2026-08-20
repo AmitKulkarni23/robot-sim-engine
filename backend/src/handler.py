@@ -89,6 +89,7 @@ def _handle_get_runs(dynamodb_client) -> dict:
             "metrics": json.loads(item.get("metrics", {}).get("S", "[]")),
             "violations": violations_raw if violations_raw and isinstance(violations_raw[0], dict) else [],
             "hasTelemetry": bool(item.get("telemetryUri", {}).get("S", "")),
+            "controllerVersion": item.get("controllerVersion", {}).get("S", "v2"),
         }
         runs.append(run)
 
@@ -138,6 +139,7 @@ def _handle_get_run(dynamodb_client, run_id: str) -> dict:
         "metrics": json.loads(item.get("metrics", {}).get("S", "[]")),
         "violations": violations_raw if violations_raw and isinstance(violations_raw[0], dict) else [],
         "hasTelemetry": bool(item.get("telemetryUri", {}).get("S", "")),
+        "controllerVersion": item.get("controllerVersion", {}).get("S", "v2"),
     }
     return _response(200, run)
 
@@ -239,7 +241,9 @@ def _handle_create_scenario(event: dict, dynamodb_client) -> dict:
     })
 
 
-def _handle_queue_scenario(dynamodb_client, scenario_id: str) -> dict:
+def _handle_queue_scenario(dynamodb_client, scenario_id: str, body: dict) -> dict:
+    controller_version = body.get("controller_version", "v2")
+
     scenarios_table = os.environ[SCENARIOS_TABLE_NAME_ENV]
     resp = dynamodb_client.query(
         TableName=scenarios_table,
@@ -259,15 +263,16 @@ def _handle_queue_scenario(dynamodb_client, scenario_id: str) -> dict:
     dynamodb_client.update_item(
         TableName=scenarios_table,
         Key={"scenarioId": {"S": scenario_id}, "version": {"N": version}},
-        UpdateExpression="SET #s = :status, updatedAt = :now",
+        UpdateExpression="SET #s = :status, updatedAt = :now, controllerVersion = :cv",
         ExpressionAttributeNames={"#s": "status"},
         ExpressionAttributeValues={
             ":status": {"S": "queued"},
             ":now": {"S": now},
+            ":cv": {"S": controller_version},
         },
     )
 
-    return _response(200, {"id": scenario_id, "status": "queued"})
+    return _response(200, {"id": scenario_id, "status": "queued", "controllerVersion": controller_version})
 
 
 def _handle_simulate(event: dict, dynamodb_client) -> dict:
@@ -302,7 +307,10 @@ def _handle_simulate(event: dict, dynamodb_client) -> dict:
     robot_model = item.get("robotModel", {}).get("S", "")
     scenario = load_scenario(yaml_content)
     model_path = get_robot_model(scenario.robot_model, str(version))
-    controller = load_controller(scenario.task.task_type)
+
+    controller_version = payload.get("controller_version", "v2")
+    controller_name = "factory_reach_defective" if controller_version == "v1" else scenario.task.task_type
+    controller = load_controller(controller_name)
 
     run_id = str(uuid.uuid4())
     started_at = datetime.now(timezone.utc).isoformat()
@@ -349,6 +357,7 @@ def _handle_simulate(event: dict, dynamodb_client) -> dict:
             "violations": {"S": json.dumps(violations)},
             "metrics": {"S": json.dumps(metrics)},
             "telemetryUri": {"S": telemetry_uri},
+            "controllerVersion": {"S": controller_version},
         },
     )
 
@@ -409,15 +418,18 @@ def _handle_stream_event(event: dict) -> None:
         new_image = record.get("dynamodb", {}).get("NewImage", {})
         scenario_id = new_image.get("scenarioId", {}).get("S")
         version = new_image.get("version", {}).get("N")
+        controller_version = new_image.get("controllerVersion", {}).get("S", "v2")
         if not scenario_id or not version:
             logger.warning("Stream record missing scenarioId or version, skipping")
             continue
 
-        logger.info("Stream trigger: running scenario %s v%s", scenario_id, version)
+        logger.info("Stream trigger: running scenario %s v%s (controller %s)",
+                     scenario_id, version, controller_version)
         simulate_event = {
             "body": json.dumps({
                 "scenario_id": scenario_id,
                 "version": int(version),
+                "controller_version": controller_version,
             }),
             "requestContext": {"http": {"method": "POST", "path": "/"}},
             "headers": {},
@@ -474,7 +486,11 @@ def handler(event: dict, context) -> dict:
                 return _handle_create_scenario(event, dynamodb_client)
             if path.endswith("/run") and path.startswith("/scenarios/"):
                 scenario_id = path.removeprefix("/scenarios/").removesuffix("/run")
-                return _handle_queue_scenario(dynamodb_client, scenario_id)
+                try:
+                    body = json.loads(event.get("body") or "{}")
+                except json.JSONDecodeError:
+                    body = {}
+                return _handle_queue_scenario(dynamodb_client, scenario_id, body)
             return _handle_simulate(event, dynamodb_client)
 
         return _response(405, {"error": "Method not allowed"})

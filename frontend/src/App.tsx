@@ -5,7 +5,6 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import AppLayout from '@/layouts/AppLayout';
 import RunsPage from '@/pages/RunsPage';
 import ScenarioBrowserPage from '@/pages/ScenarioBrowserPage';
-import ScenarioEditorPage from '@/pages/ScenarioEditorPage';
 import FactoryFloorPage from '@/pages/FactoryFloorPage';
 import CodeDiffPage from '@/pages/CodeDiffPage';
 import { buildTheme } from '@/config/theme';
@@ -35,8 +34,6 @@ const App: React.FC = () => {
               <Route path="/runs" element={<RunsPage />} />
               <Route path="/runs/:runId" element={<RunsPage />} />
               <Route path="/scenarios" element={<ScenarioBrowserPage />} />
-              <Route path="/scenarios/new" element={<ScenarioEditorPage />} />
-              <Route path="/scenarios/:scenarioId/edit" element={<ScenarioEditorPage />} />
               <Route path="/floor" element={<FactoryFloorPage />} />
               <Route path="/code-diff" element={<CodeDiffPage />} />
               <Route path="*" element={<Navigate to="/runs" replace />} />

@@ -97,14 +97,6 @@ export const scenariosTourSteps: DriveStep[] = [
     },
   },
   {
-    element: '[data-tour="new-scenario-btn"]',
-    popover: {
-      title: 'Create Scenario',
-      description: 'Create a new simulation scenario with YAML configuration.',
-      side: 'left',
-    },
-  },
-  {
     element: '[data-tour="scenarios-list"]',
     popover: {
       title: 'Scenario List',
