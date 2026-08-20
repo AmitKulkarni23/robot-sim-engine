@@ -11,7 +11,11 @@ import { TOUR_IDS, scenariosTourSteps } from '@/tours';
 import type { Run } from '@/types/run';
 
 const ScenarioBrowserPage: React.FC = () => {
-  const { data: scenarios, loading, error, refetch } = useScenarios();
+  const { data: allScenarios, loading, error, refetch } = useScenarios();
+  const scenarios = useMemo(
+    () => allScenarios.filter((s) => s.status !== 'draft'),
+    [allScenarios]
+  );
   const { data: runs } = useRuns();
 
   const pageTour = useTour({
