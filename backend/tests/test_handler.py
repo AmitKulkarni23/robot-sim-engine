@@ -493,7 +493,7 @@ def test_post_scenario_run_given_missing_scenario_should_return_404():
 
 
 @mock_aws
-def test_get_telemetry_given_valid_run_with_telemetry_should_return_s3_content():
+def test_get_telemetry_given_valid_run_with_telemetry_should_return_presigned_url():
     client = boto3.client("dynamodb", region_name="us-east-1")
     _create_tables(client)
 
@@ -525,7 +525,8 @@ def test_get_telemetry_given_valid_run_with_telemetry_should_return_s3_content()
 
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
-    assert body["sample_rate_hz"] == 30
+    assert "telemetry-bucket" in body["url"]
+    assert "s1/run-99/telemetry.json" in body["url"]
 
 
 @mock_aws

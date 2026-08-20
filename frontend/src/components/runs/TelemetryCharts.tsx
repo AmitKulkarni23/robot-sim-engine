@@ -79,7 +79,7 @@ const TelemetryCharts: React.FC<TelemetryChartsProps> = ({ runId }) => {
     return <Alert severity="info" sx={{ fontSize: 13 }}>No telemetry data available for this run.</Alert>;
   }
 
-  if (!data || data.frames.length === 0) {
+  if (!data || !data.frames || data.frames.length === 0) {
     return <Alert severity="info" sx={{ fontSize: 13 }}>Telemetry is empty.</Alert>;
   }
 
@@ -104,7 +104,7 @@ const TelemetryCharts: React.FC<TelemetryChartsProps> = ({ runId }) => {
 
   const contactCounts = sampled.map((f) => ({
     t: Number(f.t.toFixed(2)),
-    contacts: f.contacts.length,
+    contacts: (f.contacts ?? []).length,
   }));
 
   const gridColor = theme.palette.divider;

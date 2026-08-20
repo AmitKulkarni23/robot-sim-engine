@@ -6,5 +6,10 @@ export const getTelemetry = async (runId: string): Promise<TelemetryData> => {
   if (!response.ok) {
     throw new Error(`Failed to fetch telemetry: ${response.status}`);
   }
-  return response.json();
+  const { url } = (await response.json()) as { url: string };
+  const telemetryResponse = await fetch(url);
+  if (!telemetryResponse.ok) {
+    throw new Error(`Failed to fetch telemetry data: ${telemetryResponse.status}`);
+  }
+  return telemetryResponse.json();
 };

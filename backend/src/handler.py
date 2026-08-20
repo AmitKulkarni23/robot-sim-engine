@@ -378,12 +378,15 @@ def _handle_get_telemetry(dynamodb_client, run_id: str) -> dict:
 
     try:
         s3_client = boto3.client("s3")
-        s3_resp = s3_client.get_object(Bucket=bucket_name, Key=key)
-        body = s3_resp["Body"].read().decode("utf-8")
-        return _response(200, body)
+        url = s3_client.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": bucket_name, "Key": key},
+            ExpiresIn=3600,
+        )
+        return _response(200, {"url": url})
     except Exception as exc:
-        logger.error("Failed to read telemetry from S3 for run %s: %s", run_id, exc)
-        return _response(500, {"error": f"Failed to read telemetry: {exc}"})
+        logger.error("Failed to presign telemetry URL for run %s: %s", run_id, exc)
+        return _response(500, {"error": f"Failed to presign telemetry URL: {exc}"})
 
 
 def _check_auth(event: dict) -> dict | None:

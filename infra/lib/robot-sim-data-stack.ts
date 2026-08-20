@@ -72,6 +72,14 @@ export class RobotSimDataStack extends cdk.Stack {
     this.telemetryBucket = new s3.Bucket(this, 'RobotSimVideoReplaysBucket', {
       bucketName: `robot-sim-video-replays-${this.account}-${this.region}`,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      cors: [
+        {
+          allowedMethods: [s3.HttpMethods.GET],
+          allowedOrigins: ['*'],
+          allowedHeaders: ['*'],
+          maxAge: 3000,
+        },
+      ],
       lifecycleRules: [
         {
           transitions: [
