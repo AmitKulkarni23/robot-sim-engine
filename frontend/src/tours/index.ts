@@ -89,18 +89,10 @@ export const runsTourSteps: DriveStep[] = [
 
 export const scenariosTourSteps: DriveStep[] = [
   {
-    element: '[data-tour="scenarios-filter"]',
-    popover: {
-      title: 'Filter Scenarios',
-      description: 'Filter scenarios by status — published, draft, queued, or archived.',
-      side: 'bottom',
-    },
-  },
-  {
     element: '[data-tour="scenarios-list"]',
     popover: {
       title: 'Scenario List',
-      description: 'All scenarios shown here. Click to edit, queue, or view details.',
+      description: 'Pick a controller version (v1 defective / v2 fixed), hit Run, and expand to see run history.',
       side: 'top',
     },
   },
