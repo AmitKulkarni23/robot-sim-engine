@@ -18,7 +18,7 @@ Simulation engine for humanoid robotics. Python backend (Lambda container) runs 
 - **Infrastructure**: AWS CDK v2 (TypeScript)
 - **Database**: DynamoDB + S3
 - **Physics**: MuJoCo (native dependency in Lambda container)
-- **Rendering**: OSMesa (off-screen) → ffmpeg (imageio-ffmpeg) → MP4
+- **Rendering**: None (headless physics only, no video)
 - **Robot Model**: MuJoCo Menagerie — Unitree G1 (HMND 01 stand-in)
 
 ## Commands
@@ -40,7 +40,7 @@ python -m pytest      # Run tests
 ## Hard Constraints
 - Simulation MUST run in a single AWS Lambda container image (Python)
 - Trigger: API call (webhook, CI, or manual) → Lambda Function URL
-- MuJoCo + OSMesa + ffmpeg = native deps that MUST fit in Lambda container
+- MuJoCo = native dep that MUST fit in Lambda container
 - Robot model: Unitree G1 from MuJoCo Menagerie
 - All customer-specific content lives in versioned site packs — zero engine changes per customer
 
