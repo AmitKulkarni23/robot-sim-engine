@@ -6,13 +6,11 @@ import TimerIcon from '@mui/icons-material/Timer';
 import CommitIcon from '@mui/icons-material/Commit';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
-import BarChartIcon from '@mui/icons-material/BarChart';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import { useTheme } from '@mui/material/styles';
 import VerdictBadge from './VerdictBadge';
 import VerdictCard from './VerdictCard';
-import MetricsDiffTable from './MetricsDiffTable';
 import ViolationsList from './ViolationsList';
 import TelemetryCharts from './TelemetryCharts';
 import type { Run } from '@/types/run';
@@ -78,13 +76,6 @@ const RunDetail: React.FC<RunDetailProps> = ({ run }) => {
 
       <Box sx={{ mb: 3 }}>
         <VerdictCard run={run} />
-      </Box>
-
-      <Box sx={{ mb: 3 }}>
-        <SectionHeader icon={<BarChartIcon sx={{ fontSize: 16, color: theme.palette.text.disabled }} />}>
-          Metrics vs Previous Run
-        </SectionHeader>
-        <MetricsDiffTable metrics={run.metrics} />
       </Box>
 
       <Box sx={{ mb: 3 }}>
