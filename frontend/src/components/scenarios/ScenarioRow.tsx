@@ -36,8 +36,11 @@ const ScenarioRow: React.FC<ScenarioRowProps> = ({ scenario, runs = [], onStatus
     e.stopPropagation();
     setRunning(true);
     try {
-      await runScenario(scenario.id, controllerVersion);
+      const result = await runScenario(scenario.id, controllerVersion);
       onStatusChange?.();
+      if (result.runId) {
+        navigate(`/runs/${result.runId}`);
+      }
     } catch {
       setRunning(false);
     }

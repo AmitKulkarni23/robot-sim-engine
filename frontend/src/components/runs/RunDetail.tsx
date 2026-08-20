@@ -1,5 +1,6 @@
 import React from 'react';
 import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import TimerIcon from '@mui/icons-material/Timer';
@@ -74,23 +75,34 @@ const RunDetail: React.FC<RunDetailProps> = ({ run }) => {
         </Box>
       </Box>
 
-      <Box sx={{ mb: 3 }}>
-        <VerdictCard run={run} />
-      </Box>
+      {run.verdict === 'running' ? (
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, py: 6 }}>
+          <CircularProgress size={36} />
+          <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+            Simulation running — results will appear automatically when complete.
+          </Typography>
+        </Box>
+      ) : (
+        <>
+          <Box sx={{ mb: 3 }}>
+            <VerdictCard run={run} />
+          </Box>
 
-      <Box sx={{ mb: 3 }}>
-        <SectionHeader icon={<WarningAmberIcon sx={{ fontSize: 16, color: theme.palette.text.disabled }} />}>
-          {`Violations (${run.violations.length})`}
-        </SectionHeader>
-        <ViolationsList violations={run.violations} />
-      </Box>
+          <Box sx={{ mb: 3 }}>
+            <SectionHeader icon={<WarningAmberIcon sx={{ fontSize: 16, color: theme.palette.text.disabled }} />}>
+              {`Violations (${run.violations.length})`}
+            </SectionHeader>
+            <ViolationsList violations={run.violations} />
+          </Box>
 
-      <Box sx={{ mb: 3 }}>
-        <SectionHeader icon={<TimelineIcon sx={{ fontSize: 16, color: theme.palette.text.disabled }} />}>
-          Telemetry
-        </SectionHeader>
-        <TelemetryCharts runId={run.id} />
-      </Box>
+          <Box sx={{ mb: 3 }}>
+            <SectionHeader icon={<TimelineIcon sx={{ fontSize: 16, color: theme.palette.text.disabled }} />}>
+              Telemetry
+            </SectionHeader>
+            <TelemetryCharts runId={run.id} />
+          </Box>
+        </>
+      )}
     </Box>
   );
 };

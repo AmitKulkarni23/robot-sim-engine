@@ -20,7 +20,7 @@ export const getScenario = async (id: string): Promise<ScenarioDetail> => {
 export const runScenario = async (
   id: string,
   controllerVersion: string = 'v2'
-): Promise<{ id: string; status: string }> => {
+): Promise<{ id: string; status: string; runId: string }> => {
   const response = await apiFetch(`/scenarios/${encodeURIComponent(id)}/run`, {
     method: 'POST',
     body: JSON.stringify({ controller_version: controllerVersion }),

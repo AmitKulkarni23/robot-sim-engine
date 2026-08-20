@@ -50,17 +50,16 @@ def _get_method_and_path(event: dict) -> tuple[str, str]:
     return method, path
 
 
-def _handle_get_runs(dynamodb_client) -> dict:
-    results_table = os.environ[RESULTS_TABLE_NAME_ENV]
-    resp = dynamodb_client.scan(TableName=results_table, Limit=100)
-    items = resp.get("Items", [])
+def _build_run_dict(item: dict) -> dict:
+    violations_raw = json.loads(item.get("violations", {}).get("S", "[]"))
+    failures_raw = json.loads(item.get("failures", {}).get("S", "[]"))
+    is_running = item.get("runStatus", {}).get("S", "") == "running"
 
-    runs = []
-    for item in items:
-        violations_raw = json.loads(item.get("violations", {}).get("S", "[]"))
-        failures_raw = json.loads(item.get("failures", {}).get("S", "[]"))
+    if is_running:
+        verdict = "running"
+        verdict_reason = "Simulation in progress"
+    else:
         success = item.get("success", {}).get("BOOL", False)
-
         verdict = "pass" if success else "fail"
         if failures_raw:
             verdict_reason = f"Simulation Failed — {failures_raw[0]}"
@@ -73,57 +72,7 @@ def _handle_get_runs(dynamodb_client) -> dict:
         else:
             verdict_reason = "Simulation Failed"
 
-        run = {
-            "id": item.get("runId", {}).get("S", ""),
-            "scenarioId": item.get("scenarioId", {}).get("S", ""),
-            "scenarioName": item.get("scenarioName", {}).get("S", ""),
-            "verdict": verdict,
-            "verdictReason": verdict_reason,
-            "timestamp": item.get("startedAt", {}).get("S", ""),
-            "buildNumber": int(item.get("buildNumber", {}).get("N", "0")),
-            "robotModel": item.get("robotModel", {}).get("S", ""),
-            "durationSeconds": float(item.get("durationS", {}).get("N", "0")),
-            "stepsSimulated": int(item.get("stepsSimulated", {}).get("N", "0")),
-            "keyMetricLabel": "",
-            "keyMetricDeltaDirection": "neutral",
-            "metrics": json.loads(item.get("metrics", {}).get("S", "[]")),
-            "violations": violations_raw if violations_raw and isinstance(violations_raw[0], dict) else [],
-            "hasTelemetry": bool(item.get("telemetryUri", {}).get("S", "")),
-            "controllerVersion": item.get("controllerVersion", {}).get("S", "v2"),
-        }
-        runs.append(run)
-
-    runs.sort(key=lambda r: r["timestamp"], reverse=True)
-    return _response(200, runs)
-
-
-def _handle_get_run(dynamodb_client, run_id: str) -> dict:
-    results_table = os.environ[RESULTS_TABLE_NAME_ENV]
-    resp = dynamodb_client.get_item(
-        TableName=results_table,
-        Key={"runId": {"S": run_id}},
-    )
-    item = resp.get("Item")
-    if not item:
-        return _response(404, {"error": "Run not found"})
-
-    violations_raw = json.loads(item.get("violations", {}).get("S", "[]"))
-    failures_raw = json.loads(item.get("failures", {}).get("S", "[]"))
-    success = item.get("success", {}).get("BOOL", False)
-
-    verdict = "pass" if success else "fail"
-    if failures_raw:
-        verdict_reason = f"Simulation Failed — {failures_raw[0]}"
-    elif not success and violations_raw:
-        first_v = violations_raw[0]
-        title = first_v.get("title", str(first_v)) if isinstance(first_v, dict) else str(first_v)
-        verdict_reason = f"Simulation Failed — {title}"
-    elif success:
-        verdict_reason = "Simulation Passed — all thresholds met"
-    else:
-        verdict_reason = "Simulation Failed"
-
-    run = {
+    return {
         "id": item.get("runId", {}).get("S", ""),
         "scenarioId": item.get("scenarioId", {}).get("S", ""),
         "scenarioName": item.get("scenarioName", {}).get("S", ""),
@@ -141,7 +90,28 @@ def _handle_get_run(dynamodb_client, run_id: str) -> dict:
         "hasTelemetry": bool(item.get("telemetryUri", {}).get("S", "")),
         "controllerVersion": item.get("controllerVersion", {}).get("S", "v2"),
     }
-    return _response(200, run)
+
+
+def _handle_get_runs(dynamodb_client) -> dict:
+    results_table = os.environ[RESULTS_TABLE_NAME_ENV]
+    resp = dynamodb_client.scan(TableName=results_table, Limit=100)
+    items = resp.get("Items", [])
+
+    runs = [_build_run_dict(item) for item in items]
+    runs.sort(key=lambda r: r["timestamp"], reverse=True)
+    return _response(200, runs)
+
+
+def _handle_get_run(dynamodb_client, run_id: str) -> dict:
+    results_table = os.environ[RESULTS_TABLE_NAME_ENV]
+    resp = dynamodb_client.get_item(
+        TableName=results_table,
+        Key={"runId": {"S": run_id}},
+    )
+    item = resp.get("Item")
+    if not item:
+        return _response(404, {"error": "Run not found"})
+    return _response(200, _build_run_dict(item))
 
 
 def _handle_get_scenarios(dynamodb_client) -> dict:
@@ -258,21 +228,44 @@ def _handle_queue_scenario(dynamodb_client, scenario_id: str, body: dict) -> dic
 
     item = items[0]
     version = item["version"]["N"]
+    scenario_name = item.get("name", {}).get("S", scenario_id)
+    robot_model = item.get("robotModel", {}).get("S", "")
     now = datetime.now(timezone.utc).isoformat()
+    run_id = str(uuid.uuid4())
+
+    results_table = os.environ[RESULTS_TABLE_NAME_ENV]
+    dynamodb_client.put_item(
+        TableName=results_table,
+        Item={
+            "runId": {"S": run_id},
+            "scenarioId": {"S": scenario_id},
+            "scenarioName": {"S": scenario_name},
+            "robotModel": {"S": robot_model},
+            "startedAt": {"S": now},
+            "runStatus": {"S": "running"},
+            "buildNumber": {"N": str(body.get("build_number", 0))},
+            "controllerVersion": {"S": controller_version},
+            "failures": {"S": "[]"},
+            "violations": {"S": "[]"},
+            "metrics": {"S": "[]"},
+            "telemetryUri": {"S": ""},
+        },
+    )
 
     dynamodb_client.update_item(
         TableName=scenarios_table,
         Key={"scenarioId": {"S": scenario_id}, "version": {"N": version}},
-        UpdateExpression="SET #s = :status, updatedAt = :now, controllerVersion = :cv",
+        UpdateExpression="SET #s = :status, updatedAt = :now, controllerVersion = :cv, pendingRunId = :rid",
         ExpressionAttributeNames={"#s": "status"},
         ExpressionAttributeValues={
             ":status": {"S": "queued"},
             ":now": {"S": now},
             ":cv": {"S": controller_version},
+            ":rid": {"S": run_id},
         },
     )
 
-    return _response(200, {"id": scenario_id, "status": "queued", "controllerVersion": controller_version})
+    return _response(200, {"id": scenario_id, "status": "queued", "controllerVersion": controller_version, "runId": run_id})
 
 
 def _handle_simulate(event: dict, dynamodb_client) -> dict:
@@ -312,7 +305,7 @@ def _handle_simulate(event: dict, dynamodb_client) -> dict:
     controller_name = "factory_reach_defective" if controller_version == "v1" else scenario.task.task_type
     controller = load_controller(controller_name)
 
-    run_id = str(uuid.uuid4())
+    run_id = payload.get("run_id") or str(uuid.uuid4())
     started_at = datetime.now(timezone.utc).isoformat()
 
     try:
@@ -349,6 +342,7 @@ def _handle_simulate(event: dict, dynamodb_client) -> dict:
             "scenarioName": {"S": scenario_name},
             "robotModel": {"S": robot_model or scenario.robot_model},
             "startedAt": {"S": started_at},
+            "runStatus": {"S": "completed"},
             "success": {"BOOL": success},
             "durationS": {"N": str(duration_s)},
             "stepsSimulated": {"N": str(steps_simulated)},
@@ -423,13 +417,15 @@ def _handle_stream_event(event: dict) -> None:
             logger.warning("Stream record missing scenarioId or version, skipping")
             continue
 
-        logger.info("Stream trigger: running scenario %s v%s (controller %s)",
-                     scenario_id, version, controller_version)
+        run_id = new_image.get("pendingRunId", {}).get("S")
+        logger.info("Stream trigger: running scenario %s v%s (controller %s, run %s)",
+                     scenario_id, version, controller_version, run_id)
         simulate_event = {
             "body": json.dumps({
                 "scenario_id": scenario_id,
                 "version": int(version),
                 "controller_version": controller_version,
+                "run_id": run_id,
             }),
             "requestContext": {"http": {"method": "POST", "path": "/"}},
             "headers": {},

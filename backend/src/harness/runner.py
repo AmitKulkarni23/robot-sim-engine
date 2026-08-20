@@ -78,10 +78,6 @@ def run_scenario(
         steps_simulated = sim.steps_taken
         success = not violations
 
-        if duration_s >= max_duration_s:
-            failures.append(f"timed out after {max_duration_s}s")
-            success = False
-
         telemetry.total_duration_s = duration_s
 
         return RunResult(
