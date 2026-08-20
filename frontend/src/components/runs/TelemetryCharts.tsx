@@ -4,6 +4,9 @@ import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
 import Chip from '@mui/material/Chip';
+import IconButton from '@mui/material/IconButton';
+import MuiTooltip from '@mui/material/Tooltip';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { useTheme } from '@mui/material/styles';
 import {
   LineChart,
@@ -118,7 +121,11 @@ const TelemetryCharts: React.FC<TelemetryChartsProps> = ({ runId }) => {
         <Chip label={`${data.total_duration_s.toFixed(1)}s`} size="small" variant="outlined" sx={{ fontSize: 11 }} />
       </Box>
 
-      <ChartCard title="Center of Mass" subtitle="Position in world frame (meters)">
+      <ChartCard
+        title="Center of Mass"
+        subtitle="Position in world frame (meters)"
+        info="Tracks the robot's balance point over time. X/Y show lateral drift, Z (height) shows vertical position. A sudden Z drop usually means the robot is falling. Stable standing keeps all three lines flat."
+      >
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={comData}>
             <CartesianGrid stroke={gridColor} strokeDasharray="3 3" />
@@ -156,7 +163,11 @@ const TelemetryCharts: React.FC<TelemetryChartsProps> = ({ runId }) => {
         </ResponsiveContainer>
       </ChartCard>
 
-      <ChartCard title="Joint Angles" subtitle="Key joints (radians)">
+      <ChartCard
+        title="Joint Angles"
+        subtitle="Key joints (radians)"
+        info="Shows the angular position of key joints (shoulders, elbows, waist) over time. Smooth curves mean controlled motion. Erratic oscillations or sudden jumps indicate instability or a controller bug. Values are in radians — flat lines mean the joint is holding position."
+      >
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={jointData}>
             <CartesianGrid stroke={gridColor} strokeDasharray="3 3" />
@@ -195,7 +206,11 @@ const TelemetryCharts: React.FC<TelemetryChartsProps> = ({ runId }) => {
         </ResponsiveContainer>
       </ChartCard>
 
-      <ChartCard title="Contact Events" subtitle="Active contacts per frame">
+      <ChartCard
+        title="Contact Events"
+        subtitle="Active contacts per frame"
+        info="Counts how many body parts are touching surfaces each frame. Foot contacts (usually 2) are normal during standing. Spikes above baseline mean extra body parts hit the ground — knees, hands, or torso — which typically indicates a fall or collision."
+      >
         <ResponsiveContainer width="100%" height={140}>
           <LineChart data={contactCounts}>
             <CartesianGrid stroke={gridColor} strokeDasharray="3 3" />
@@ -233,9 +248,10 @@ const TelemetryCharts: React.FC<TelemetryChartsProps> = ({ runId }) => {
   );
 };
 
-const ChartCard: React.FC<{ title: string; subtitle: string; children: React.ReactNode }> = ({
+const ChartCard: React.FC<{ title: string; subtitle: string; info?: string; children: React.ReactNode }> = ({
   title,
   subtitle,
+  info,
   children,
 }) => {
   const theme = useTheme();
@@ -249,7 +265,25 @@ const ChartCard: React.FC<{ title: string; subtitle: string; children: React.Rea
         backgroundColor: theme.palette.background.paper,
       }}
     >
-      <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 0.25 }}>{title}</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.25 }}>
+        <Typography sx={{ fontSize: 13, fontWeight: 600 }}>{title}</Typography>
+        {info && (
+          <MuiTooltip
+            title={info}
+            placement="right"
+            arrow
+            slotProps={{
+              tooltip: {
+                sx: { fontSize: 12, maxWidth: 300, lineHeight: 1.5, p: 1.5 },
+              },
+            }}
+          >
+            <IconButton size="small" sx={{ p: 0.25, color: 'text.secondary' }}>
+              <InfoOutlinedIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </MuiTooltip>
+        )}
+      </Box>
       <Typography sx={{ fontSize: 11, color: 'text.secondary', mb: 1.5 }}>{subtitle}</Typography>
       {children}
     </Box>
