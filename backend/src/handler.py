@@ -322,6 +322,7 @@ def _handle_simulate(event: dict, dynamodb_client) -> dict:
         violations = [asdict(v) for v in result.violations]
         metrics = [asdict(m) for m in result.metrics]
     except ScenarioRunError as exc:
+        logger.error("Simulation failed for %s: %s", run_id, exc, exc_info=True)
         success = False
         duration_s = 0.0
         steps_simulated = 0

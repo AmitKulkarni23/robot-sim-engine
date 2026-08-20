@@ -95,4 +95,4 @@ def run_scenario(
     except ScenarioRunError:
         raise
     except Exception as exc:
-        raise ScenarioRunError("Simulation run failed unexpectedly") from exc
+        raise ScenarioRunError(f"Simulation run failed unexpectedly: {exc}") from exc
