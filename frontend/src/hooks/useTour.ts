@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { driver, type DriveStep, type Config } from 'driver.js';
+import { driver, type DriveStep, type Config, type PopoverDOM } from 'driver.js';
 import 'driver.js/dist/driver.css';
 
 const STORAGE_KEY_PREFIX = 'tour_completed_';
@@ -65,8 +65,30 @@ export function useTour({ tourId, steps, autoStart = true, autoStartDelay = 500,
       stagePadding: 8,
       stageRadius: 8,
       popoverClass: 'rse-tour-popover',
+      nextBtnText: 'Next',
+      prevBtnText: 'Back',
+      doneBtnText: 'Finish',
       ...driverConfig,
       steps,
+      onPopoverRender: (popover: PopoverDOM, opts) => {
+        const skipBtn = document.createElement('button');
+        skipBtn.textContent = 'Skip Tutorial';
+        skipBtn.className = 'rse-tour-skip-btn';
+        Object.assign(skipBtn.style, {
+          background: 'none',
+          border: 'none',
+          color: '#888',
+          fontSize: '12px',
+          cursor: 'pointer',
+          padding: '4px 0',
+          textDecoration: 'underline',
+        });
+        skipBtn.addEventListener('click', () => {
+          instance.destroy();
+        });
+        popover.footer.insertBefore(skipBtn, popover.footer.firstChild);
+        driverConfig?.onPopoverRender?.(popover, opts);
+      },
       onDestroyed: (...args) => {
         markTourCompleted(tourId);
         driverConfig?.onDestroyed?.(...args);
