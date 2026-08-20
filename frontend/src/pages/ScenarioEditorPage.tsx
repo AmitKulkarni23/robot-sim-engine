@@ -25,6 +25,7 @@ robot_model: unitree_g1       # Robot model from MuJoCo Menagerie (unitree_g1)
 task:
   task_type: pick_and_place    # Task type: stand_still | pick_and_place | walk_forward
   description: "Describe the task here."
+  max_duration_s: 30.0         # Max sim time in seconds (default 30). Timeout = failure.
 
 # Objects placed in the scene before simulation starts (omit for body-only tasks)
 object_placements:

@@ -13,6 +13,14 @@ class TaskDefinition(BaseModel):
 
     task_type: str
     description: str = ""
+    max_duration_s: float = 30.0
+
+    @field_validator("max_duration_s")
+    @classmethod
+    def _validate_max_duration(cls, value: float) -> float:
+        if value <= 0:
+            raise ValueError("max_duration_s must be positive")
+        return value
 
 
 class ObjectPlacement(BaseModel):

@@ -308,7 +308,8 @@ def _handle_simulate(event: dict, dynamodb_client) -> dict:
     started_at = datetime.now(timezone.utc).isoformat()
 
     try:
-        result = run_scenario(scenario, controller, model_path)
+        result = run_scenario(scenario, controller, model_path,
+                               max_duration_s=scenario.task.max_duration_s)
         logger.info("Simulation completed for %s: success=%s, frames=%d",
                      run_id, result.success, len(result.telemetry.frames))
 

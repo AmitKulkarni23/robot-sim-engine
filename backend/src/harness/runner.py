@@ -11,8 +11,8 @@ from telemetry.models import TelemetryBundle, TelemetryFrame
 from .models import RunResult, ScenarioRunError, StructuredViolation
 
 TELEMETRY_HZ = 30
-_FOOT_LINK_NAMES = {"left_foot", "right_foot", "foot"}
-_GROUND_BODY_NAME = "floor_body"
+_FOOT_LINK_NAMES = {"left_ankle_roll_link", "right_ankle_roll_link"}
+_GROUND_BODY_NAME = "world"
 
 
 def _should_sample(sim_time: float, last_sample_time: float, hz: int) -> bool:
