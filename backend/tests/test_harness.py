@@ -45,9 +45,9 @@ def test_run_scenario_given_stand_still_controller_should_complete_and_return_re
     assert isinstance(result, RunResult)
     assert result.duration_s == pytest.approx(0.02)
     assert result.steps_simulated == 10
-    assert result.success is False
-    assert result.violations  # fall detected via contact
-    assert result.failures == []  # no simulation errors, only violations
+    assert result.success is True
+    assert result.violations == []
+    assert result.failures == []
 
 
 def test_run_scenario_should_apply_randomization_before_running(monkeypatch):

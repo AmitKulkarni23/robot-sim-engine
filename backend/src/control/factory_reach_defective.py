@@ -4,7 +4,8 @@ from __future__ import annotations
 from physics.models import SimState
 
 from .base import RobotController
-from .factory_reach import _STAND_KEYFRAME, _lerp
+from .factory_reach import _lerp
+from .keyframes import STAND_KEYFRAME
 from .models import ControlAction
 
 _AGGRESSIVE_REACH = {
@@ -24,11 +25,11 @@ class FactoryReachDefectiveController(RobotController):
     """Bug: reaches too far forward too fast, shifts center of mass past feet, robot falls."""
 
     def compute_action(self, state: SimState, elapsed_time: float) -> ControlAction:
-        targets = dict(_STAND_KEYFRAME)
+        targets = dict(STAND_KEYFRAME)
 
         t = elapsed_time / _REACH_SPEED
         for joint, reach_val in _AGGRESSIVE_REACH.items():
-            stand_val = _STAND_KEYFRAME[joint]
+            stand_val = STAND_KEYFRAME[joint]
             targets[joint] = _lerp(stand_val, reach_val, t)
 
         return ControlAction(joint_targets=targets)

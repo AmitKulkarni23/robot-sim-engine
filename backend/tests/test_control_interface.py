@@ -2,26 +2,28 @@ import pytest
 
 from control.base import RobotController
 from control.factory import load_controller
+from control.keyframes import STAND_KEYFRAME
 from control.models import ControllerError, UnknownControllerError
 from control.stand_still import StandStillController
 from physics.models import SimState
 
 
-def test_stand_still_controller_given_joint_state_should_return_matching_targets():
+def test_stand_still_controller_should_return_standing_keyframe_regardless_of_state():
     controller = StandStillController()
     state = SimState(joint_angles={"hip": 0.5, "knee": -0.3})
 
     action = controller.compute_action(state, elapsed_time=1.0)
 
-    assert action.joint_targets == {"hip": 0.5, "knee": -0.3}
+    assert action.joint_targets == STAND_KEYFRAME
 
 
-def test_stand_still_controller_given_empty_joint_state_should_raise_controller_error():
+def test_stand_still_controller_given_empty_joint_state_should_still_return_keyframe():
     controller = StandStillController()
     state = SimState(joint_angles={})
 
-    with pytest.raises(ControllerError):
-        controller.compute_action(state, elapsed_time=1.0)
+    action = controller.compute_action(state, elapsed_time=1.0)
+
+    assert action.joint_targets == STAND_KEYFRAME
 
 
 def test_load_controller_given_stand_still_should_return_stand_still_controller_instance():

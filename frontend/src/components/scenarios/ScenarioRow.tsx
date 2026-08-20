@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 import Collapse from '@mui/material/Collapse';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
@@ -11,7 +12,7 @@ import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 import ScenarioStatusChip from './ScenarioStatusChip';
 import VerdictBadge from '@/components/runs/VerdictBadge';
-import { runScenario } from '@/api/scenarios';
+import { getScenario, runScenario } from '@/api/scenarios';
 import type { Scenario } from '@/types/scenario';
 import type { Run } from '@/types/run';
 import { fontFamilyMono } from '@/config/theme';
@@ -31,6 +32,17 @@ const ScenarioRow: React.FC<ScenarioRowProps> = ({ scenario, runs = [], onStatus
   const [running, setRunning] = useState(false);
   const [controllerVersion, setControllerVersion] = useState<ControllerVersion>('v2');
   const [expanded, setExpanded] = useState(false);
+  const [yamlContent, setYamlContent] = useState<string | null>(null);
+  const [yamlLoading, setYamlLoading] = useState(false);
+
+  useEffect(() => {
+    if (!expanded || yamlContent !== null) return;
+    setYamlLoading(true);
+    getScenario(scenario.id)
+      .then((detail) => setYamlContent(detail.yamlContent))
+      .catch(() => setYamlContent(''))
+      .finally(() => setYamlLoading(false));
+  }, [expanded, scenario.id, yamlContent]);
 
   const handleRun = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -165,6 +177,36 @@ const ScenarioRow: React.FC<ScenarioRowProps> = ({ scenario, runs = [], onStatus
 
       <Collapse in={expanded} timeout="auto" unmountOnExit>
         <Box sx={{ backgroundColor: theme.palette.background.default }}>
+          {yamlLoading && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+              <CircularProgress size={18} />
+            </Box>
+          )}
+          {yamlContent !== null && yamlContent !== '' && (
+            <Box sx={{ px: 3, py: 1.5, borderTop: `1px solid ${theme.palette.divider}` }}>
+              <Typography sx={{ fontSize: 11, fontWeight: 600, color: 'text.secondary', mb: 0.75 }}>
+                Scenario YAML
+              </Typography>
+              <Box
+                component="pre"
+                sx={{
+                  fontFamily: fontFamilyMono,
+                  fontSize: 11.5,
+                  lineHeight: 1.6,
+                  backgroundColor: theme.palette.action.hover,
+                  border: `1px solid ${theme.palette.divider}`,
+                  borderRadius: 1,
+                  p: 1.5,
+                  m: 0,
+                  overflowX: 'auto',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                }}
+              >
+                {yamlContent}
+              </Box>
+            </Box>
+          )}
           {runs.length === 0 && (
             <Typography sx={{ fontSize: 12, color: 'text.disabled', px: 3, py: 1.5 }}>
               No runs yet for this scenario.
