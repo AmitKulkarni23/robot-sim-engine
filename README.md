@@ -6,7 +6,7 @@ Built for [Humanoid](https://thehumanoid.ai/) (HMND 01 Alpha + KinetIQ).
 
 ## What This Does
 
-An engineer defines a scenario (factory cell, task, randomization ranges), runs the robot's control software against simulated physics, and gets back a verdict + metrics + video replay. Versioned and comparable across software builds.
+An engineer defines a scenario (factory cell, task, randomization ranges), runs the robot's control software against simulated physics, and gets back a verdict + metrics + telemetry charts. Versioned and comparable across software builds.
 
 ## Architecture
 
@@ -132,7 +132,7 @@ Three CDK stacks deployed together.
 
 - Simulation runs inside a **single AWS Lambda container image** (Python)
 - Trigger: API call (webhook, CI, or manual) → Lambda Function URL
-- Physics + Rendering: MuJoCo, off-screen rendering via OSMesa, frames → MP4 via ffmpeg (imageio-ffmpeg)
+- Physics: MuJoCo, off-screen rendering via OSMesa
 - Robot Model: MuJoCo Menagerie (Unitree G1 as HMND 01 stand-in)
 - Control Plane: AWS (DynamoDB, DDB Streams, Lambda, S3)
 - Frontend: React + Material UI → Vercel
@@ -166,7 +166,7 @@ robot-sim-engine/
 - **JS Runtime**: Bun (https://bun.sh/)
 - **Frontend**: React 18 + TypeScript + Material UI
 - **Infrastructure**: AWS CDK (TypeScript)
-- **Database**: DynamoDB (scenarios, results) + S3 (videos, models)
+- **Database**: DynamoDB (scenarios, results) + S3 (telemetry, models)
 - **Physics**: MuJoCo
 - **CI/CD**: GitHub Actions
 
@@ -203,7 +203,7 @@ Lambda handler.py receives it:
   3. Loads scenario YAML from DynamoDB scenarios table
   4. Downloads robot model (Unitree G1) from S3
   5. Runs MuJoCo physics simulation via harness/runner.py
-  6. Records video frames → encodes MP4 → uploads to S3
+  6. Records telemetry frames → uploads JSON to S3
   7. Writes result to simulation-results DynamoDB table
   8. Returns {"run_id": "uuid", "success": true/false}
         ↓
