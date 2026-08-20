@@ -1,10 +1,16 @@
-scenario_id: factory-reach-fail
-version: 1
-robot_model: unitree_g1
+scenario_id: factory-reach-fail         # Unique identifier for this scenario
+version: 1                             # Schema version — increment on breaking changes
+robot_model: unitree_g1                # Robot model from MuJoCo Menagerie
+
 task:
-  task_type: factory_reach_defective
+  task_type: factory_reach_defective   # Controller: defective version — causes fall
   description: "Robot reaches toward workstation — defective controller causes fall."
+  max_duration_s: 30.0                 # Max sim time in seconds (default 30)
+
+# Objects placed in the scene before simulation starts
 object_placements: []
+
+# Domain randomization settings
 randomization:
-  seed: null
-  position_noise_std: 0.0
+  seed: null                           # Random seed (null = non-deterministic)
+  position_noise_std: 0.0              # Gaussian noise std on positions (meters)
