@@ -1,0 +1,114 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "panels": [
+    {
+      "title": "Motor Temperatures (°C)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "grafana-timestream-datasource", "uid": "amazon-timestream" },
+      "targets": [
+        {
+          "rawQuery": true,
+          "queryString": "SELECT time, robot_id, measure_value::double AS temperature FROM \"robot-sim-telemetry\".\"telemetry\" WHERE tenant_id = '${tenant}' AND measure_name LIKE 'motor.motor_temps%' ORDER BY time DESC LIMIT 500"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": { "lineWidth": 1, "fillOpacity": 10, "spanNulls": true }
+        }
+      }
+    },
+    {
+      "title": "Battery Status",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "grafana-timestream-datasource", "uid": "amazon-timestream" },
+      "targets": [
+        {
+          "rawQuery": true,
+          "queryString": "SELECT time, robot_id, measure_name, measure_value::double AS value FROM \"robot-sim-telemetry\".\"telemetry\" WHERE tenant_id = '${tenant}' AND measure_name IN ('battery.voltage', 'battery.charge_pct', 'battery.power_watts') ORDER BY time DESC LIMIT 500"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "lineWidth": 1, "fillOpacity": 5, "spanNulls": true }
+        }
+      }
+    },
+    {
+      "title": "Joint Positions (rad)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "grafana-timestream-datasource", "uid": "amazon-timestream" },
+      "targets": [
+        {
+          "rawQuery": true,
+          "queryString": "SELECT time, robot_id, measure_value::double AS position FROM \"robot-sim-telemetry\".\"telemetry\" WHERE tenant_id = '${tenant}' AND measure_name LIKE 'motor.joint_positions%' ORDER BY time DESC LIMIT 500"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "rad",
+          "custom": { "lineWidth": 1, "fillOpacity": 0, "spanNulls": true }
+        }
+      }
+    },
+    {
+      "title": "IMU Accelerometer",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "grafana-timestream-datasource", "uid": "amazon-timestream" },
+      "targets": [
+        {
+          "rawQuery": true,
+          "queryString": "SELECT time, robot_id, measure_name, measure_value::double AS value FROM \"robot-sim-telemetry\".\"telemetry\" WHERE tenant_id = '${tenant}' AND measure_name IN ('imu.accel_x', 'imu.accel_y', 'imu.accel_z') ORDER BY time DESC LIMIT 500"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "accMS2",
+          "custom": { "lineWidth": 1, "fillOpacity": 5, "spanNulls": true }
+        }
+      }
+    },
+    {
+      "title": "Fault Events",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "datasource": { "type": "grafana-timestream-datasource", "uid": "amazon-timestream" },
+      "targets": [
+        {
+          "rawQuery": true,
+          "queryString": "SELECT time, robot_id, measure_value::varchar AS fault_code FROM \"robot-sim-telemetry\".\"telemetry\" WHERE tenant_id = '${tenant}' AND measure_name = 'fault.fault_code' ORDER BY time DESC LIMIT 50"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["robot-sim", "telemetry"],
+  "templating": {
+    "list": [
+      {
+        "name": "tenant",
+        "type": "custom",
+        "current": { "text": "schaeffler", "value": "schaeffler" },
+        "options": [
+          { "text": "schaeffler", "value": "schaeffler", "selected": true },
+          { "text": "sap", "value": "sap", "selected": false },
+          { "text": "siemens", "value": "siemens", "selected": false },
+          { "text": "bosch", "value": "bosch", "selected": false }
+        ],
+        "query": "schaeffler,sap,siemens,bosch"
+      }
+    ]
+  },
+  "time": { "from": "now-30m", "to": "now" },
+  "refresh": "5s",
+  "title": "Robot Telemetry — Multi-Tenant",
+  "uid": "robot-sim-telemetry"
+}
