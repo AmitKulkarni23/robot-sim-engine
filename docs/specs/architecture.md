@@ -68,3 +68,27 @@ When a scenario's status changes to `queued` (via DynamoDB Streams → Lambda ev
 - **API proxy**: `/api` prefix proxied to Lambda Function URL
 - **Pages**: Runs, Scenarios (browser + editor), Factory Floor, Code Diff
 - **Telemetry**: Frontend fetches presigned S3 URL from `/runs/{runId}/telemetry`, then fetches JSON directly from S3
+
+## Telemetry Pipeline (Demo)
+
+Standalone multi-tenant IoT telemetry demo in `telemetry/`. Not connected to the main simulation engine — separate CDK stack.
+
+4. **TelemetryPipelineStack** — Timestream DB+table, S3 archive bucket, SNS fault alerts topic, 3 IoT Core rules
+
+### Data Flow
+
+```
+Python agent (paho-mqtt) ──MQTT/mTLS──→ IoT Core ──Rules──→ Timestream (1h hot / 1d magnetic)
+(4 tenants × 2 robots)     (X.509)                          → S3 (raw JSON archive)
+                                                             → SNS (fault alerts)
+```
+
+### Components
+
+| Component | Location |
+|-----------|----------|
+| CDK stack | `infra/lib/telemetry-pipeline-stack.ts` |
+| Python simulator | `telemetry/simulator/` |
+| Grafana (Docker) | `telemetry/grafana/` |
+| Lifecycle scripts | `telemetry/scripts/{setup,run,teardown}.sh` |
+| IoT certs (generated) | `telemetry/certs/` (gitignored) |
