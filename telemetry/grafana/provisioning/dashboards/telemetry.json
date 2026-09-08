@@ -1,30 +1,36 @@
 {
   "annotations": { "list": [] },
   "editable": true,
-  "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
-  "links": [],
   "panels": [
     {
-      "title": "Motor Temperatures (°C)",
+      "title": "Max motor temperature (°C)",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
       "datasource": { "type": "influxdb", "uid": "influxdb" },
       "targets": [
         {
-          "query": "from(bucket: \"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"motor\")\n  |> filter(fn: (r) => r[\"tenant_id\"] == \"${tenant}\")\n  |> filter(fn: (r) => r[\"_field\"] =~ /motor_temp_.*/)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
+          "query": "from(bucket: \"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"motor\")\n  |> filter(fn: (r) => r[\"tenant_id\"] == \"${tenant}\")\n  |> filter(fn: (r) => r[\"_field\"] =~ /motor_temp_.*/)\n  |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)",
           "refId": "A"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "celsius",
-          "custom": { "lineWidth": 1, "fillOpacity": 10, "spanNulls": true }
+          "custom": { "lineWidth": 1, "fillOpacity": 10, "spanNulls": true },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 70 },
+              { "color": "red", "value": 85 }
+            ]
+          }
         }
       }
     },
     {
-      "title": "Battery Status",
+      "title": "Battery",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
       "datasource": { "type": "influxdb", "uid": "influxdb" },
@@ -41,27 +47,9 @@
       }
     },
     {
-      "title": "Joint Positions (rad)",
+      "title": "IMU acceleration (m/s²)",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
-      "datasource": { "type": "influxdb", "uid": "influxdb" },
-      "targets": [
-        {
-          "query": "from(bucket: \"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"motor\")\n  |> filter(fn: (r) => r[\"tenant_id\"] == \"${tenant}\")\n  |> filter(fn: (r) => r[\"_field\"] =~ /joint_pos_.*/)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "rad",
-          "custom": { "lineWidth": 1, "fillOpacity": 0, "spanNulls": true }
-        }
-      }
-    },
-    {
-      "title": "IMU Accelerometer",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
       "datasource": { "type": "influxdb", "uid": "influxdb" },
       "targets": [
         {
@@ -77,20 +65,20 @@
       }
     },
     {
-      "title": "Fault Events",
+      "title": "Fault log",
       "type": "table",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
       "datasource": { "type": "influxdb", "uid": "influxdb" },
       "targets": [
         {
-          "query": "from(bucket: \"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"fault\")\n  |> filter(fn: (r) => r[\"tenant_id\"] == \"${tenant}\")\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 50)",
+          "query": "from(bucket: \"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"fault\")\n  |> filter(fn: (r) => r[\"tenant_id\"] == \"${tenant}\")\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> sort(columns: [\"_time\"], desc: true)\n  |> limit(n: 20)",
           "refId": "A"
         }
       ]
     }
   ],
   "schemaVersion": 39,
-  "tags": ["robot-sim", "telemetry"],
+  "tags": ["robot-sim", "engineering"],
   "templating": {
     "list": [
       {
@@ -109,6 +97,6 @@
   },
   "time": { "from": "now-30m", "to": "now" },
   "refresh": "5s",
-  "title": "Robot Telemetry — Multi-Tenant",
+  "title": "Robot Telemetry (Engineering)",
   "uid": "robot-sim-telemetry"
 }

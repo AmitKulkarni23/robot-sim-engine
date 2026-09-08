@@ -1,16 +1,16 @@
 tenants:
   - id: schaeffler
-    robots: [g1-001, g1-002]
+    robots: [g1-001]
   - id: sap
-    robots: [g1-001, g1-002]
+    robots: [g1-001]
   - id: siemens
-    robots: [g1-001, g1-002]
+    robots: [g1-001]
   - id: bosch
-    robots: [g1-001, g1-002]
+    robots: [g1-001]
 
 publish:
   batch_interval_sec: 3
   fault_probability: 0.02
 
 signals:
-  num_joints: 12
+  num_joints: 6
