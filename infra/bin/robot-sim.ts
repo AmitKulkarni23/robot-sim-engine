@@ -3,6 +3,7 @@ import * as cdk from 'aws-cdk-lib';
 import { RobotSimDataStack } from '../lib/robot-sim-data-stack';
 import { RobotSimComputeStack } from '../lib/robot-sim-compute-stack';
 import { RobotSimTriggerStack } from '../lib/robot-sim-trigger-stack';
+import { TelemetryPipelineStack } from '../lib/telemetry-pipeline-stack';
 
 const app = new cdk.App();
 
@@ -34,3 +35,5 @@ new RobotSimTriggerStack(app, 'RobotSimTriggerStack', {
   scenariosTable: dataStack.scenariosTable,
   simulatorFunction: computeStack.simulatorFunction,
 });
+
+new TelemetryPipelineStack(app, 'TelemetryPipelineStack', { env });
