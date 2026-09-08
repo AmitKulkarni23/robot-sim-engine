@@ -37,7 +37,7 @@
       "datasource": { "type": "influxdb", "uid": "influxdb" },
       "targets": [
         {
-          "query": "from(bucket: \"telemetry\")\n  |> range(start: -30m)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"fault\")\n  |> filter(fn: (r) => r[\"_field\"] == \"fault_code\")\n  |> group(columns: [\"tenant_id\"])\n  |> count()",
+          "query": "from(bucket: \"telemetry\")\n  |> range(start: -30m)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"fault\")\n  |> filter(fn: (r) => r[\"_field\"] == \"fault_code\")\n  |> group()\n  |> count()\n  |> keep(columns: [\"_value\"])",
           "refId": "A"
         }
       ],
@@ -56,7 +56,12 @@
       "options": {
         "colorMode": "background",
         "graphMode": "none",
-        "textMode": "auto"
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "/_value/",
+          "values": false
+        }
       }
     },
     {
