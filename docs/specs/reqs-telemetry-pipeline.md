@@ -38,30 +38,24 @@
 
 ## FR-3: IoT Core Rules Engine
 
-Three IoT rules triggered by topic filter:
+Two IoT rules triggered by topic filter:
 
-### Rule 1 — Timestream write
-- SQL: `SELECT * FROM 'dt/+/+/telemetry'`
-- Action: Write to Amazon Timestream table
-- Dimensions: tenant_id, robot_id (extracted from topic)
-
-### Rule 2 — S3 archive
+### Rule 1 — S3 archive
 - SQL: `SELECT * FROM 'dt/+/+/telemetry'`
 - Action: Write to S3 bucket, key pattern: `{tenant_id}/{robot_id}/{timestamp}.json`
 
-### Rule 3 — SNS fault alert
+### Rule 2 — SNS fault alert
 - SQL: `SELECT * FROM 'dt/+/+/fault'` (separate topic — faults only)
 - Action: Publish to SNS topic
 - One SNS topic, message includes tenant_id for downstream filtering
 
-## FR-4: Amazon Timestream
+## FR-4: InfluxDB (Local Docker)
 
-- Database: `robot-sim-telemetry`
-- Table: `telemetry`
-- Hot tier: 1 hour (in-memory)
-- Magnetic tier: 1 day
-- Dimensions: tenant_id, robot_id, signal_group
-- Measures: multi-measure records per signal group
+- InfluxDB 2.7 running in Docker (replaces Timestream — unavailable for new AWS accounts)
+- Org: `robot-sim`, Bucket: `telemetry`, Retention: 2 hours
+- Measurements: `motor`, `imu`, `battery`, `fault`
+- Tags: tenant_id, robot_id, joint (for motor data)
+- Simulator writes directly via HTTP (dual-write alongside MQTT)
 
 ## FR-5: S3 Archive
 
@@ -78,7 +72,7 @@ Three IoT rules triggered by topic filter:
 ## FR-7: Grafana Dashboards (Local Docker)
 
 - Local Grafana via docker-compose (no AWS Managed Grafana — avoids SSO complexity)
-- Timestream data source configured via provisioning
+- InfluxDB data source configured via provisioning (Flux queries)
 - Per-tenant dashboard with:
   - Motor temperature heatmap
   - Joint position/velocity time series
@@ -90,7 +84,7 @@ Three IoT rules triggered by topic filter:
 ## FR-8: Infrastructure as Code
 
 - New CDK stack: `TelemetryPipelineStack` in `infra/lib/`
-- Creates: IoT rules, Timestream database+table, S3 archive bucket, SNS topic
+- Creates: IoT rules, S3 archive bucket, SNS topic (InfluxDB runs locally in Docker)
 - IoT things/certs/policies handled by setup script (not CDK — certs need PEM files on disk)
 - Stack added to `infra/bin/robot-sim.ts`
 

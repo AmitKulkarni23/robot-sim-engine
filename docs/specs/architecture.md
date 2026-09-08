@@ -73,14 +73,15 @@ When a scenario's status changes to `queued` (via DynamoDB Streams → Lambda ev
 
 Standalone multi-tenant IoT telemetry demo in `telemetry/`. Not connected to the main simulation engine — separate CDK stack.
 
-4. **TelemetryPipelineStack** — Timestream DB+table, S3 archive bucket, SNS fault alerts topic, 3 IoT Core rules
+4. **TelemetryPipelineStack** — S3 archive bucket, SNS fault alerts topic, 2 IoT Core rules
 
 ### Data Flow
 
 ```
-Python agent (paho-mqtt) ──MQTT/mTLS──→ IoT Core ──Rules──→ Timestream (1h hot / 1d magnetic)
-(4 tenants × 2 robots)     (X.509)                          → S3 (raw JSON archive)
-                                                             → SNS (fault alerts)
+Python agent (paho-mqtt) ──MQTT/mTLS──→ IoT Core ──Rules──→ S3 (raw JSON archive)
+(4 tenants × 2 robots)     (X.509)                        → SNS (fault alerts)
+     │
+     └──HTTP──→ Local InfluxDB (Docker, 2h retention) ←── Grafana (Docker)
 ```
 
 ### Components

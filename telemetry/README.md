@@ -1,23 +1,25 @@
 # Telemetry Pipeline Demo
 
-End-to-end demo: simulated robot edge agents → MQTT/mTLS → AWS IoT Core → Timestream + S3 + SNS → Grafana dashboards.
+End-to-end demo: simulated robot edge agents → MQTT/mTLS → AWS IoT Core → S3 + SNS (cloud), InfluxDB + Grafana (local dashboards).
 
 **Tenants**: Schaeffler, SAP, Siemens, Bosch (4 concurrent simulators, 2 robots each)
 
 ## Architecture
 
 ```
-Python Agent ──MQTT/mTLS──→ AWS IoT Core ──Rules Engine──→ Timestream (hot store)
-(per tenant)                  (X.509 cert)                 → S3 (raw archive)
-                                                           → SNS (fault alerts)
-                                                                    ↓
-                              Local Grafana (Docker) ←── Timestream data source
+Python Agent ──MQTT/mTLS──→ AWS IoT Core ──Rules Engine──→ S3 (raw archive)
+(per tenant)    (X.509)                                   → SNS (fault alerts)
+     │
+     └──HTTP──→ Local InfluxDB (Docker) ←── Grafana (Docker)
+               (time-series hot store)      (per-tenant dashboards)
 ```
+
+The simulator dual-writes: MQTT to IoT Core (cloud path for S3 archive + SNS alerts) and HTTP to local InfluxDB (for Grafana visualization).
 
 ## Prerequisites
 
 - AWS CLI configured with credentials
-- Docker (for Grafana)
+- Docker (for InfluxDB + Grafana)
 - Python 3.10+
 - Bun (for CDK)
 - CDK bootstrapped in your account (`bunx cdk bootstrap`)
@@ -28,7 +30,7 @@ Python Agent ──MQTT/mTLS──→ AWS IoT Core ──Rules Engine──→ T
 # 1. Setup — deploys CDK stack, creates IoT certs, downloads root CA
 ./scripts/setup.sh
 
-# 2. Run — starts Grafana + 4 tenant simulators
+# 2. Run — starts InfluxDB + Grafana + 4 tenant simulators
 ./scripts/run.sh
 
 # 3. Open Grafana
@@ -72,13 +74,18 @@ Edit `simulator/config.yaml` to change:
 
 | Resource | Name/Pattern |
 |----------|-------------|
-| Timestream DB | `robot-sim-telemetry` |
-| Timestream table | `telemetry` (1h hot, 1d magnetic) |
 | S3 bucket | `robot-sim-telemetry-archive-{account}-{region}` |
 | SNS topic | `robot-sim-fault-alerts` |
-| IoT rules | `robot_sim_telemetry_to_timestream`, `robot_sim_telemetry_to_s3`, `robot_sim_fault_to_sns` |
+| IoT rules | `robot_sim_telemetry_to_s3`, `robot_sim_fault_to_sns` |
 | IoT things | `robot-sim-{tenant}` (4 things) |
 | IoT policies | `robot-sim-{tenant}-policy` (4 policies) |
+
+## Local Resources (Docker)
+
+| Resource | Port | Purpose |
+|----------|------|---------|
+| InfluxDB 2.7 | 8086 | Time-series store (2h retention) |
+| Grafana 11.1 | 3001 | Dashboards (admin/demo1234) |
 
 ## Optional: Email Alerts
 
