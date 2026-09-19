@@ -13,18 +13,16 @@ paths:
 src/
 ├── api/            # HTTP calls only. One file per domain.
 ├── components/     # Reusable UI components.
-│   ├── ui/         # ShadCN base components. Installed via npx shadcn@latest add.
 │   └── {domain}/   # Subdirectory when a domain has 3+ related components.
-├── config/         # Static config: constants, feature flags, env values.
+├── config/         # Static config: constants, feature flags, env values, client init.
 ├── hooks/          # Custom React hooks. One hook per file.
 ├── layouts/        # Route-level layout wrappers only.
-├── lib/            # Utility libraries. Contains utils.ts with cn() helper.
 ├── pages/          # One file per route.
-├── store/          # Global client state (e.g. Redux).
+├── store/          # Global client state (e.g. Redux, Zustand).
 │   └── slices/
-├── styles/         # globals.css with Tailwind directives and CSS variables.
+├── styles/         # Global CSS/SCSS. Theme tokens as CSS variables.
 ├── types/          # Shared TypeScript interfaces and types.
-└── utils/          # Pure functions. No API calls, no React imports.
+└── utils/          # Pure functions and helpers. No API calls, no React imports.
 ```
 
 ## Rules

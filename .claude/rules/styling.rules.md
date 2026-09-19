@@ -1,93 +1,73 @@
 ---
 paths:
   - "src/**/*.tsx"
-  - "**/tailwind.config.*"
   - "src/**/*.css"
+  - "src/**/*.scss"
 ---
 
 # Frontend Styling Conventions
 
-**Load when:** adding or changing styles, working with Tailwind classes, or theming.
+**Load when:** adding or changing styles or themed components.
 
 ## Rules
 
-- Styles MUST use Tailwind CSS utility classes. Inline `style={{}}` MUST NOT be used.
-- CSS custom properties and `tailwind.config.ts` theme tokens SHOULD be preferred over hardcoded values.
-- Per-component CSS files MUST NOT be created. Global styles belong in one `globals.css` file.
-- Layout SHOULD use Tailwind's flex/grid utilities rather than custom CSS.
+- Inline `style={{}}` MUST NOT be used except for truly dynamic values (e.g. computed widths, positions).
+- Hardcoded color hex/rgb values MUST NOT appear in component files. Use CSS variables or theme tokens.
+- Per-component CSS files MUST NOT be created unless using CSS Modules. Global styles belong in one `globals.css` (or `index.css`) file.
+- Layout SHOULD use flexbox/grid utilities or CSS classes rather than manual pixel calculations.
 
-## Tailwind Usage
+## CSS Variables for Theming
 
-```tsx
-// Good — Tailwind utilities
-<div className="flex items-center gap-4 rounded-lg bg-background p-4">
-  <h2 className="text-lg font-semibold text-foreground">Hello</h2>
-</div>
+SHOULD define design tokens as CSS custom properties for consistency across the app.
 
-// Bad — inline style
-<div style={{ display: 'flex', alignItems: 'center', padding: '16px' }}>
-  <h2 style={{ color: '#666' }}>Hello</h2>
-</div>
-
-// Bad — hardcoded colors instead of theme tokens
-<div className="bg-[#f8fafc] text-[#1976d2]">
+```css
+/* globals.css */
+:root {
+  --color-primary: #2563eb;
+  --color-background: #ffffff;
+  --color-foreground: #0f172a;
+  --color-muted: #64748b;
+  --color-destructive: #dc2626;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --radius: 0.5rem;
+}
 ```
 
-## Conditional Classes with `cn()`
+```tsx
+// Good — theme token
+<div style={{ color: 'var(--color-primary)' }} />
 
-MUST use `cn()` from `@/lib/utils` for conditional or merged class names.
+// Good — className referencing theme
+<div className="text-primary" />
+
+// Bad — hardcoded color
+<div style={{ color: '#2563eb' }} />
+```
+
+## Conditional Classes
+
+SHOULD use a utility like `clsx` or `classnames` for conditional class composition.
 MUST NOT use string concatenation or template literals for conditional classes.
 
 ```tsx
-import { cn } from '@/lib/utils';
+import clsx from 'clsx';
 
 // Good
-<div className={cn(
-  "rounded-lg border p-4",
-  isActive && "border-primary bg-primary/10",
-  isDisabled && "opacity-50 cursor-not-allowed"
+<div className={clsx(
+  "card",
+  isActive && "card--active",
+  isDisabled && "card--disabled"
 )} />
 
 // Bad — string concatenation
-<div className={`rounded-lg border p-4 ${isActive ? 'border-primary' : ''}`} />
-```
-
-## Theme Tokens
-
-Use ShadCN's CSS variable-based theming. These are defined in `globals.css`
-and accessed via Tailwind:
-
-```tsx
-// Semantic tokens — SHOULD use these
-<div className="bg-background text-foreground" />
-<div className="bg-card text-card-foreground" />
-<div className="bg-muted text-muted-foreground" />
-<div className="border-border" />
-<div className="text-primary" />
-<div className="text-destructive" />
-
-// Hardcoded — MUST NOT use when a token exists
-<div className="bg-white text-gray-900" />
+<div className={`card ${isActive ? 'card--active' : ''}`} />
 ```
 
 ## Responsive Design
 
-MUST use Tailwind's responsive prefixes. MUST NOT use CSS media queries.
-
-```tsx
-// Good — mobile-first responsive
-<div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-
-// Bad — CSS media query
-@media (min-width: 768px) { .grid { grid-template-columns: repeat(2, 1fr); } }
-```
+MUST design mobile-first. Breakpoints SHOULD be handled via CSS media queries or the project's utility framework (e.g. Tailwind responsive prefixes).
 
 ## Dark Mode
 
-ShadCN projects use `class` strategy for dark mode. MUST use the
-`dark:` prefix for dark mode overrides when the default theme tokens
-don't cover the case.
-
-```tsx
-<div className="bg-white dark:bg-slate-900">
-```
+When dark mode is needed, SHOULD use CSS custom properties that swap under a `data-theme` attribute or `prefers-color-scheme` media query.

@@ -11,8 +11,6 @@ paths:
 
 ```tsx
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 type MyComponentProps = {
   title: string;
@@ -21,14 +19,10 @@ type MyComponentProps = {
 
 const MyComponent: React.FC<MyComponentProps> = ({ title, onAction }) => {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Button onClick={onAction}>Take Action</Button>
-      </CardContent>
-    </Card>
+    <div>
+      <h2>{title}</h2>
+      <button onClick={onAction}>Take Action</button>
+    </div>
   );
 };
 
@@ -40,15 +34,14 @@ export default MyComponent;
 - Components MUST use default exports.
 - Props type MUST be defined directly above the component, not inline or in a separate file.
 - File names MUST be PascalCase with `.tsx` extension — e.g. `LoginPopup.tsx`, `StatCard.tsx`.
-- Import order MUST be: React → external libraries → ShadCN `@/components/ui/` → internal modules (components, hooks, types, utils).
+- Import order MUST be: React → external libraries → internal components → hooks → types → utils.
 - Components MUST NOT contain raw API calls. API calls belong in `src/api/` and SHOULD be accessed via hooks.
 
-## ShadCN Component Usage
+## UI Component Libraries
 
-- ShadCN components live in `src/components/ui/`. These are installed via `npx shadcn@latest add <component>`.
-- MUST NOT modify ShadCN base components in `src/components/ui/` unless absolutely necessary. Build wrapper components instead.
-- When a ShadCN component exists for the job, MUST use it instead of building from scratch. Check the ShadCN docs before creating custom components.
-- Common ShadCN components: `Button`, `Card`, `Dialog`, `Input`, `Label`, `Select`, `Table`, `Tabs`, `Toast`, `Dropdown Menu`, `Sheet`, `Badge`, `Avatar`.
+- When a project uses a component library (e.g. MUI, Chakra, Ant Design), MUST prefer library components over building from scratch.
+- Library base components MUST NOT be modified directly. Build wrapper components instead.
+- Check library docs before creating custom components — the library likely has what you need.
 
 ## Import Order Example
 
@@ -59,19 +52,18 @@ import React, { useState } from 'react';
 // 2. External libraries
 import { useNavigate } from 'react-router-dom';
 
-// 3. ShadCN components
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-
-// 4. Internal — components, hooks, types, utils
+// 3. Internal components
 import StatCard from '../components/StatCard';
+
+// 4. Hooks
 import { useDashboard } from '../hooks/useDashboard';
+
+// 5. Types and utils
 import { Idea } from '../types';
 import { formatDate } from '../utils/formatDate';
 ```
 
 ## Path Aliases
 
-- `@/` MUST alias to `src/`. Configure in `tsconfig.json` and `vite.config.ts`.
-- ShadCN components MUST be imported using `@/components/ui/` path.
+- `@/` SHOULD alias to `src/`. Configure in `tsconfig.json` and the bundler config (e.g. `vite.config.ts`).
 - Other internal imports MAY use relative paths or `@/` — be consistent within the project.
