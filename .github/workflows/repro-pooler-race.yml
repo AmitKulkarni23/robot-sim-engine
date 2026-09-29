@@ -8,7 +8,7 @@ on:
 jobs:
   pooler-race:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +27,27 @@ jobs:
       - name: Show status (for debugging)
         run: supabase status
 
+      - name: Docker state after start
+        run: |
+          echo "=== All containers ==="
+          docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -i supabase || true
+          echo ""
+          echo "=== Supavisor/pooler container logs ==="
+          POOLER_CONTAINER=$(docker ps -a --format '{{.Names}}' | grep -i pooler | head -1)
+          if [ -n "$POOLER_CONTAINER" ]; then
+            echo "Container: $POOLER_CONTAINER"
+            echo "--- inspect health ---"
+            docker inspect "$POOLER_CONTAINER" --format '{{.State.Status}} health={{.State.Health.Status}}' 2>&1 || true
+            echo "--- port bindings ---"
+            docker port "$POOLER_CONTAINER" 2>&1 || true
+            echo "--- last 50 log lines ---"
+            docker logs "$POOLER_CONTAINER" --tail 50 2>&1 || true
+          else
+            echo "No pooler container found!"
+            echo "All containers:"
+            docker ps -a --format '{{.Names}}' 2>&1
+          fi
+
       - name: Install psql
         run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
 
@@ -39,26 +60,36 @@ jobs:
       - name: Test pooler connection immediately (the race)
         run: |
           echo "--- Pooler connection — immediately after supabase start ---"
-          echo "If this fails with EAUTHQUERY, the race condition from #6855 is confirmed."
+          echo "If this fails with EAUTHQUERY or Connection refused, the race from #6855 is confirmed."
           echo ""
-          # Supavisor expects username format: <db_user>.<tenant_id>
-          # Default tenant is "pooler-dev", default transaction-mode port is 54329.
           psql "postgresql://postgres.pooler-dev:postgres@localhost:54329/postgres" \
             -c "SELECT 1 AS pooler_ok;" 2>&1 || true
 
-      - name: Retry pooler with timestamps (observe the gap)
+      - name: Retry pooler with timestamps (120s budget)
         run: |
           echo "--- Timed retry loop: how long until the pooler actually works? ---"
           START_TIME=$(date +%s)
-          for i in $(seq 1 30); do
+          for i in $(seq 1 120); do
             if psql "postgresql://postgres.pooler-dev:postgres@localhost:54329/postgres" \
               -c "SELECT 1;" > /dev/null 2>&1; then
               ELAPSED=$(( $(date +%s) - START_TIME ))
               echo "Pooler became ready after ${ELAPSED}s (attempt $i)"
               exit 0
             fi
-            echo "Attempt $i failed at $(date -u +%H:%M:%S) — retrying in 1s..."
+            # Print every 5th attempt to avoid log spam
+            if [ $((i % 5)) -eq 0 ] || [ $i -eq 1 ]; then
+              echo "Attempt $i failed at $(date -u +%H:%M:%S) — still retrying..."
+            fi
             sleep 1
           done
-          echo "Pooler never became ready within 30s"
+          echo ""
+          echo "Pooler never became ready within 120s"
+          echo ""
+          echo "=== Final pooler container state ==="
+          POOLER_CONTAINER=$(docker ps -a --format '{{.Names}}' | grep -i pooler | head -1)
+          if [ -n "$POOLER_CONTAINER" ]; then
+            docker inspect "$POOLER_CONTAINER" --format 'status={{.State.Status}} health={{.State.Health.Status}}' 2>&1 || true
+            echo "--- last 100 log lines ---"
+            docker logs "$POOLER_CONTAINER" --tail 100 2>&1 || true
+          fi
           exit 1
