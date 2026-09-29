@@ -1,0 +1,64 @@
+name: Reproduce pooler auth_query race (supabase/cli#6855)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  pooler-race:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Init local project
+        run: supabase init
+
+      - name: Start local stack
+        run: supabase start
+
+      - name: Show status (for debugging)
+        run: supabase status
+
+      - name: Install psql
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+
+      - name: Verify direct connection works (control)
+        run: |
+          echo "--- Direct (non-pooled) connection — should always work ---"
+          psql "postgresql://postgres:postgres@localhost:54322/postgres" \
+            -c "SELECT 1 AS direct_ok;"
+
+      - name: Test pooler connection immediately (the race)
+        run: |
+          echo "--- Pooler connection — immediately after supabase start ---"
+          echo "If this fails with EAUTHQUERY, the race condition from #6855 is confirmed."
+          echo ""
+          # Supavisor expects username format: <db_user>.<tenant_id>
+          # Default tenant is "pooler-dev", default transaction-mode port is 54329.
+          psql "postgresql://postgres.pooler-dev:postgres@localhost:54329/postgres" \
+            -c "SELECT 1 AS pooler_ok;" 2>&1 || true
+
+      - name: Retry pooler with timestamps (observe the gap)
+        run: |
+          echo "--- Timed retry loop: how long until the pooler actually works? ---"
+          START_TIME=$(date +%s)
+          for i in $(seq 1 30); do
+            if psql "postgresql://postgres.pooler-dev:postgres@localhost:54329/postgres" \
+              -c "SELECT 1;" > /dev/null 2>&1; then
+              ELAPSED=$(( $(date +%s) - START_TIME ))
+              echo "Pooler became ready after ${ELAPSED}s (attempt $i)"
+              exit 0
+            fi
+            echo "Attempt $i failed at $(date -u +%H:%M:%S) — retrying in 1s..."
+            sleep 1
+          done
+          echo "Pooler never became ready within 30s"
+          exit 1
