@@ -24,15 +24,15 @@ jobs:
       - name: Enable the pooler
         run: |
           # Pooler is disabled by default — enable it so Supavisor starts.
-          cat >> supabase/config.toml << 'EOF'
+          cat >> supabase/config.toml <<'EOF'
 
-          [db.pooler]
-          enabled = true
-          port = 54329
-          pool_mode = "transaction"
-          default_pool_size = 20
-          max_client_conn = 100
-          EOF
+[db.pooler]
+enabled = true
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 20
+max_client_conn = 100
+EOF
 
       - name: Start local stack
         run: supabase start
