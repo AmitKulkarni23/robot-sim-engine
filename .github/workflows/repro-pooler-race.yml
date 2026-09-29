@@ -6,73 +6,62 @@ on:
     branches: [main]
 
 jobs:
-  pooler-race:
+  # Job 1: Pin to the reported version (2.117.0) to reproduce the original bug
+  pooler-race-pinned:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Supabase CLI
+      - name: Install psql (before start, so it doesn't mask the race)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+
+      - name: Install Supabase CLI (pinned to reported version)
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.117.0
 
-      - name: Init local project
-        run: supabase init
-
-      - name: Enable the pooler
+      - name: Init and enable pooler
         run: |
-          # Pooler is disabled by default in the generated config.toml — flip only that line.
+          supabase init
           sed -i '/^\[db\.pooler\]$/{n;s/enabled = false/enabled = true/;}' supabase/config.toml
 
       - name: Start local stack
         run: supabase start
 
-      - name: Show status (for debugging)
-        run: supabase status
+      - name: Test pooler IMMEDIATELY (the race)
+        run: |
+          echo "--- CLI 2.117.0 — pooler connection immediately after start ---"
+          psql "postgresql://postgres.pooler-dev:postgres@localhost:54329/postgres" \
+            -c "SELECT 1 AS pooler_ok;" 2>&1 || true
 
-      - name: Docker state after start
+      - name: Verify direct connection works (control)
+        run: |
+          psql "postgresql://postgres:postgres@localhost:54322/postgres" \
+            -c "SELECT 1 AS direct_ok;"
+
+      - name: Docker diagnostics
+        if: always()
         run: |
           echo "=== All containers ==="
           docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -i supabase || true
           echo ""
-          echo "=== Supavisor/pooler container logs ==="
-          POOLER_CONTAINER=$(docker ps -a --format '{{.Names}}' | grep -i pooler | head -1)
-          if [ -n "$POOLER_CONTAINER" ]; then
-            echo "Container: $POOLER_CONTAINER"
-            echo "--- inspect health ---"
-            docker inspect "$POOLER_CONTAINER" --format '{{.State.Status}} health={{.State.Health.Status}}' 2>&1 || true
-            echo "--- port bindings ---"
-            docker port "$POOLER_CONTAINER" 2>&1 || true
-            echo "--- last 50 log lines ---"
-            docker logs "$POOLER_CONTAINER" --tail 50 2>&1 || true
+          POOLER=$(docker ps -a --format '{{.Names}}' | grep -i pooler | head -1)
+          if [ -n "$POOLER" ]; then
+            echo "=== Pooler: $POOLER ==="
+            docker inspect "$POOLER" --format 'status={{.State.Status}} health={{.State.Health.Status}}' 2>&1 || true
+            docker port "$POOLER" 2>&1 || true
+            echo "--- logs ---"
+            docker logs "$POOLER" --tail 80 2>&1 || true
           else
-            echo "No pooler container found!"
-            echo "All containers:"
+            echo "No pooler container found"
             docker ps -a --format '{{.Names}}' 2>&1
           fi
 
-      - name: Install psql
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
-
-      - name: Verify direct connection works (control)
-        run: |
-          echo "--- Direct (non-pooled) connection — should always work ---"
-          psql "postgresql://postgres:postgres@localhost:54322/postgres" \
-            -c "SELECT 1 AS direct_ok;"
-
-      - name: Test pooler connection immediately (the race)
-        run: |
-          echo "--- Pooler connection — immediately after supabase start ---"
-          echo "If this fails with EAUTHQUERY or Connection refused, the race from #6855 is confirmed."
-          echo ""
-          psql "postgresql://postgres.pooler-dev:postgres@localhost:54329/postgres" \
-            -c "SELECT 1 AS pooler_ok;" 2>&1 || true
-
       - name: Retry pooler with timestamps (120s budget)
         run: |
-          echo "--- Timed retry loop: how long until the pooler actually works? ---"
+          echo "--- How long until the pooler actually works? ---"
           START_TIME=$(date +%s)
           for i in $(seq 1 120); do
             if psql "postgresql://postgres.pooler-dev:postgres@localhost:54329/postgres" \
@@ -81,20 +70,92 @@ jobs:
               echo "Pooler became ready after ${ELAPSED}s (attempt $i)"
               exit 0
             fi
-            # Print every 5th attempt to avoid log spam
             if [ $((i % 5)) -eq 0 ] || [ $i -eq 1 ]; then
-              echo "Attempt $i failed at $(date -u +%H:%M:%S) — still retrying..."
+              echo "Attempt $i failed at $(date -u +%H:%M:%S)"
             fi
             sleep 1
           done
-          echo ""
           echo "Pooler never became ready within 120s"
+          POOLER=$(docker ps -a --format '{{.Names}}' | grep -i pooler | head -1)
+          if [ -n "$POOLER" ]; then
+            docker inspect "$POOLER" --format 'status={{.State.Status}} health={{.State.Health.Status}}' 2>&1 || true
+            docker logs "$POOLER" --tail 100 2>&1 || true
+          fi
+          exit 1
+
+  # Job 2: Latest CLI — same test, to see if it's been fixed
+  pooler-race-latest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install psql (before start, so it doesn't mask the race)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+
+      - name: Install Supabase CLI (latest)
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Init and enable pooler
+        run: |
+          supabase init
+          sed -i '/^\[db\.pooler\]$/{n;s/enabled = false/enabled = true/;}' supabase/config.toml
+
+      - name: Start local stack
+        run: supabase start
+
+      - name: Test pooler IMMEDIATELY (the race)
+        run: |
+          echo "--- CLI latest — pooler connection immediately after start ---"
+          psql "postgresql://postgres.pooler-dev:postgres@localhost:54329/postgres" \
+            -c "SELECT 1 AS pooler_ok;" 2>&1 || true
+
+      - name: Verify direct connection works (control)
+        run: |
+          psql "postgresql://postgres:postgres@localhost:54322/postgres" \
+            -c "SELECT 1 AS direct_ok;"
+
+      - name: Docker diagnostics
+        if: always()
+        run: |
+          echo "=== All containers ==="
+          docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -i supabase || true
           echo ""
-          echo "=== Final pooler container state ==="
-          POOLER_CONTAINER=$(docker ps -a --format '{{.Names}}' | grep -i pooler | head -1)
-          if [ -n "$POOLER_CONTAINER" ]; then
-            docker inspect "$POOLER_CONTAINER" --format 'status={{.State.Status}} health={{.State.Health.Status}}' 2>&1 || true
-            echo "--- last 100 log lines ---"
-            docker logs "$POOLER_CONTAINER" --tail 100 2>&1 || true
+          POOLER=$(docker ps -a --format '{{.Names}}' | grep -i pooler | head -1)
+          if [ -n "$POOLER" ]; then
+            echo "=== Pooler: $POOLER ==="
+            docker inspect "$POOLER" --format 'status={{.State.Status}} health={{.State.Health.Status}}' 2>&1 || true
+            docker port "$POOLER" 2>&1 || true
+            echo "--- logs ---"
+            docker logs "$POOLER" --tail 80 2>&1 || true
+          else
+            echo "No pooler container found"
+            docker ps -a --format '{{.Names}}' 2>&1
+          fi
+
+      - name: Retry pooler with timestamps (120s budget)
+        run: |
+          echo "--- How long until the pooler actually works? ---"
+          START_TIME=$(date +%s)
+          for i in $(seq 1 120); do
+            if psql "postgresql://postgres.pooler-dev:postgres@localhost:54329/postgres" \
+              -c "SELECT 1;" > /dev/null 2>&1; then
+              ELAPSED=$(( $(date +%s) - START_TIME ))
+              echo "Pooler became ready after ${ELAPSED}s (attempt $i)"
+              exit 0
+            fi
+            if [ $((i % 5)) -eq 0 ] || [ $i -eq 1 ]; then
+              echo "Attempt $i failed at $(date -u +%H:%M:%S)"
+            fi
+            sleep 1
+          done
+          echo "Pooler never became ready within 120s"
+          POOLER=$(docker ps -a --format '{{.Names}}' | grep -i pooler | head -1)
+          if [ -n "$POOLER" ]; then
+            docker inspect "$POOLER" --format 'status={{.State.Status}} health={{.State.Health.Status}}' 2>&1 || true
+            docker logs "$POOLER" --tail 100 2>&1 || true
           fi
           exit 1
